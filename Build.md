@@ -37,7 +37,6 @@ pacman -S --needed \
   mingw-w64-ucrt-x86_64-toolchain \
   mingw-w64-ucrt-x86_64-cmake \
   mingw-w64-ucrt-x86_64-ninja \
-  mingw-w64-ucrt-x86_64-pkg-config \
   mingw-w64-ucrt-x86_64-SDL2 \
   mingw-w64-ucrt-x86_64-jsoncpp \
   mingw-w64-ucrt-x86_64-angleproject \

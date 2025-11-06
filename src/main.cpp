@@ -1,25 +1,31 @@
 #include <SDL.h>
 #include <SDL_opengles2.h>
-#include <signal.h>
-#include <stdio.h>
 
-static volatile int running = 1;
+#include <csignal>
 
-void handle_sigint(int sig)
+namespace
 {
-    (void)sig;
+constexpr int kWindowWidth = 720;
+constexpr int kWindowHeight = 480;
+constexpr Uint32 kFrameDelayMs = 16;
+
+volatile std::sig_atomic_t running = 1;
+
+void handle_sigint(int)
+{
     running = 0;
     SDL_Log("Caught Ctrl+C, exiting...");
 }
+} // namespace
 
-int main(int argc, char *argv[])
+int main(int argc, char** argv)
 {
-    (void)argc;
-    (void)argv;
+    static_cast<void>(argc);
+    static_cast<void>(argv);
 
-    signal(SIGINT, handle_sigint);
+    std::signal(SIGINT, handle_sigint);
 
-    SDL_Log("simple-sdl2 start!!!");
+    SDL_Log("ShaderDock starting...");
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         SDL_Log("SDL_Init failed: %s", SDL_GetError());
@@ -41,14 +47,14 @@ int main(int argc, char *argv[])
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
 
-    SDL_Window *window = SDL_CreateWindow(
-        "simple-sdl2",
+    SDL_Window* window = SDL_CreateWindow(
+        "ShaderDock",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
-        720,
-        480,
+        kWindowWidth,
+        kWindowHeight,
         SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
-    if (!window) {
+    if (window == nullptr) {
         SDL_Log("SDL_CreateWindow failed: %s", SDL_GetError());
         SDL_Quit();
         return 1;
@@ -57,7 +63,7 @@ int main(int argc, char *argv[])
     SDL_SetWindowResizable(window, SDL_FALSE);
 
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
-    if (!gl_context) {
+    if (gl_context == nullptr) {
         SDL_Log("SDL_GL_CreateContext failed: %s", SDL_GetError());
         SDL_DestroyWindow(window);
         SDL_Quit();
@@ -88,62 +94,62 @@ int main(int argc, char *argv[])
         SDL_Log("OpenGL ES 3.2 context created successfully.");
     }
 
-    typedef const GLubyte *(GL_APIENTRY *PFNGLGETSTRINGPROC)(GLenum);
-    PFNGLGETSTRINGPROC glGetStringPtr =
-        (PFNGLGETSTRINGPROC)SDL_GL_GetProcAddress("glGetString");
+    using PFNGLGETSTRINGPROC = const GLubyte*(GL_APIENTRY*)(GLenum);
+    const auto glGetStringPtr = reinterpret_cast<PFNGLGETSTRINGPROC>(
+        SDL_GL_GetProcAddress("glGetString"));
 
-    const char *vendor = NULL;
-    const char *renderer = NULL;
-    const char *version = NULL;
-    if (glGetStringPtr) {
-        vendor = (const char *)glGetStringPtr(GL_VENDOR);
-        renderer = (const char *)glGetStringPtr(GL_RENDERER);
-        version = (const char *)glGetStringPtr(GL_VERSION);
+    const char* vendor = nullptr;
+    const char* renderer = nullptr;
+    const char* version = nullptr;
+    if (glGetStringPtr != nullptr) {
+        vendor = reinterpret_cast<const char*>(glGetStringPtr(GL_VENDOR));
+        renderer = reinterpret_cast<const char*>(glGetStringPtr(GL_RENDERER));
+        version = reinterpret_cast<const char*>(glGetStringPtr(GL_VERSION));
     } else {
         SDL_Log("glGetString not available via SDL_GL_GetProcAddress.");
     }
 
-    if (vendor) {
+    if (vendor != nullptr) {
         SDL_Log("GL_VENDOR: %s", vendor);
     }
-    if (renderer) {
+    if (renderer != nullptr) {
         SDL_Log("GL_RENDERER: %s", renderer);
     }
-    if (version) {
+    if (version != nullptr) {
         SDL_Log("GL_VERSION: %s", version);
     }
 
-    typedef void(GL_APIENTRY *PFNGLVIEWPORTPROC)(GLint, GLint, GLsizei, GLsizei);
-    typedef void(GL_APIENTRY *PFNGLCLEARCOLORPROC)(GLfloat, GLfloat, GLfloat, GLfloat);
-    typedef void(GL_APIENTRY *PFNGLCLEARPROC)(GLbitfield);
+    using PFNGLVIEWPORTPROC = void(GL_APIENTRY*)(GLint, GLint, GLsizei, GLsizei);
+    using PFNGLCLEARCOLORPROC = void(GL_APIENTRY*)(GLfloat, GLfloat, GLfloat, GLfloat);
+    using PFNGLCLEARPROC = void(GL_APIENTRY*)(GLbitfield);
 
-    PFNGLVIEWPORTPROC glViewportPtr =
-        (PFNGLVIEWPORTPROC)SDL_GL_GetProcAddress("glViewport");
-    PFNGLCLEARCOLORPROC glClearColorPtr =
-        (PFNGLCLEARCOLORPROC)SDL_GL_GetProcAddress("glClearColor");
-    PFNGLCLEARPROC glClearPtr =
-        (PFNGLCLEARPROC)SDL_GL_GetProcAddress("glClear");
+    const auto glViewportPtr = reinterpret_cast<PFNGLVIEWPORTPROC>(
+        SDL_GL_GetProcAddress("glViewport"));
+    const auto glClearColorPtr = reinterpret_cast<PFNGLCLEARCOLORPROC>(
+        SDL_GL_GetProcAddress("glClearColor"));
+    const auto glClearPtr = reinterpret_cast<PFNGLCLEARPROC>(
+        SDL_GL_GetProcAddress("glClear"));
 
-    if (!glViewportPtr || !glClearColorPtr || !glClearPtr) {
+    if (glViewportPtr == nullptr || glClearColorPtr == nullptr || glClearPtr == nullptr) {
         SDL_Log("Basic GLES functions missing (viewport/clear), rendering disabled.");
     }
 
     int window_width = 0;
     int window_height = 0;
     SDL_GetWindowSize(window, &window_width, &window_height);
-    if (glViewportPtr) {
+    if (glViewportPtr != nullptr) {
         glViewportPtr(0, 0, window_width, window_height);
     }
 
-    if (glClearColorPtr && glClearPtr) {
-        glClearColorPtr(0.1f, 0.2f, 0.3f, 1.0f);
+    if (glClearColorPtr != nullptr && glClearPtr != nullptr) {
+        glClearColorPtr(0.1F, 0.2F, 0.3F, 1.0F);
         glClearPtr(GL_COLOR_BUFFER_BIT);
         SDL_GL_SwapWindow(window);
     }
 
-    SDL_Event event;
-    while (running) {
-        while (SDL_PollEvent(&event)) {
+    SDL_Event event{};
+    while (running != 0) {
+        while (SDL_PollEvent(&event) != 0) {
             if (event.type == SDL_QUIT ||
                 event.type == SDL_KEYDOWN ||
                 event.type == SDL_MOUSEBUTTONDOWN) {
@@ -151,12 +157,12 @@ int main(int argc, char *argv[])
                 break;
             }
         }
-        if (glClearColorPtr && glClearPtr) {
-            glClearColorPtr(0.1f, 0.2f, 0.3f, 1.0f);
+        if (glClearColorPtr != nullptr && glClearPtr != nullptr) {
+            glClearColorPtr(0.1F, 0.2F, 0.3F, 1.0F);
             glClearPtr(GL_COLOR_BUFFER_BIT);
             SDL_GL_SwapWindow(window);
         }
-        SDL_Delay(16);
+        SDL_Delay(kFrameDelayMs);
     }
 
     SDL_GL_DeleteContext(gl_context);
