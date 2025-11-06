@@ -53,15 +53,17 @@ pkg-config --modversion jsoncpp
 ```
 若 `pkg-config` 能输出 `sdl2` ≥ 2.32.10、`jsoncpp` ≥ 1.9.5，即表示依赖满足要求。
 
-### 2.5 构建与运行
+### 2.5 配置 PATH
+为了在任意终端中使用 UCRT64 工具链 和 动态库，可将 `C:\msys64\ucrt64\bin` 添加到系统 `PATH`。
+
+
+### 2.6 构建与运行
 ```sh
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
-编译完成后，可执行文件位于 `build/simple-sdl2.exe`。若运行时报错缺少 `SDL2.dll`，可将 `C:\msys64\ucrt64\bin\SDL2.dll` 拷贝到可执行文件同目录。
 
-### 2.6 可选：配置 PATH
-为了在任意终端中使用 UCRT64 工具链，可将 `C:\msys64\ucrt64\bin` 添加到系统 `PATH`。
+
 
 ---
 
