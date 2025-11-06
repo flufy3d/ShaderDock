@@ -64,8 +64,20 @@ cmake --build build
 ```
 ### 2.7 可选： wsl里运行
 
+```
+# 从msys2 shell里启动
+
 cmd.exe /c "C:\msys64\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c 'cmake --build build'"
 
+# 或者直接创建别名更方便
+msys_exec() {
+    local cmd_string="$*"
+    cmd.exe /c "E:\msys64\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c '$cmd_string'"
+}
+
+msys_exec 'cmake --build build'
+
+```
 
 ---
 
