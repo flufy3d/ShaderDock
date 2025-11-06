@@ -69,7 +69,7 @@ cmake --build build
 
 cmd.exe /c "C:\msys64\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c 'cmake --build build'"
 
-# 或者直接创建别名更方便
+# 或者直接创建别名更方便 下面内容添加到 ~/.bashrc
 msys_exec() {
     local cmd_string="$*"
     cmd.exe /c "E:\msys64\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c '$cmd_string'"
