@@ -40,6 +40,7 @@ pacman -S --needed \
   mingw-w64-ucrt-x86_64-pkg-config \
   mingw-w64-ucrt-x86_64-SDL2 \
   mingw-w64-ucrt-x86_64-jsoncpp \
+  mingw-w64-ucrt-x86_64-angleproject \
   git
 ```
 > MSYS2 滚动更新，`mingw-w64-ucrt-x86_64-SDL2` 通常提供高于 2.32.10 的版本，可通过 `pacman -Qi mingw-w64-ucrt-x86_64-SDL2` 查询；若需精确版本，请改用本地构建或下载官方发布的开发包。

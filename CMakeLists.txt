@@ -14,4 +14,11 @@ if(SDL2_LDFLAGS_OTHER)
     target_link_options(simple-sdl2 PRIVATE ${SDL2_LDFLAGS_OTHER})
 endif()
 
+find_library(GLESv2_LIB NAMES GLESv2 libGLESv2)
+if(GLESv2_LIB)
+    target_link_libraries(simple-sdl2 ${GLESv2_LIB})
+else()
+    message(WARNING "OpenGL ES 2/3 library not found; install libGLESv2 to link against OpenGL ES.")
+endif()
+
 install(TARGETS simple-sdl2 RUNTIME DESTINATION bin)
