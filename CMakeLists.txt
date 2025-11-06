@@ -27,3 +27,4 @@ else()
 endif()
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
+install(DIRECTORY assets DESTINATION .)
