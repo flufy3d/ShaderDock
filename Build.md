@@ -62,7 +62,9 @@ pkg-config --modversion jsoncpp
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
+### 2.7 可选： wsl里运行
 
+cmd.exe /c "C:\msys64\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c 'cmake --build build'"
 
 
 ---
