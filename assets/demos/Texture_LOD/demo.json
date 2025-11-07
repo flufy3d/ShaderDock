@@ -1,0 +1,40 @@
+{
+  "ver": "0.1",
+  "info": {
+    "id": "4slGWn",
+    "name": "Texture - LOD",
+    "username": "iq",
+    "description": "This shows how to select a mip level in a texture. Besides having advanced uses in sampling artifacts avoidance, it can also be used as a cheap way to get a textures box-blurred for free (useful for fake depth of field effects, for example).",
+    "tags": [
+      "2d",
+      "texture",
+      "lod",
+      "mipmap"
+    ],
+    "likes": 113,
+    "published": 3
+  },
+  "renderpass": [
+    {
+      "name": "Image",
+      "type": "image",
+      "source": "image.glsl",
+      "inputs": [
+        {
+          "id": "4dfGRn",
+          "type": "texture",
+          "channel": 0,
+          "filepath": "/textures/8de3a3924cb95bd0e95a443fff0326c869f9d4979cd1d5b6e94e2a01f5be53e9.jpg",
+          "sampler": {
+            "filter": "mipmap",
+            "wrap": "repeat",
+            "vflip": "false",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    }
+  ]
+}

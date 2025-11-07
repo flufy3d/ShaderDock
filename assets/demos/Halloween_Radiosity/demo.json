@@ -1,0 +1,235 @@
+{
+  "ver": "0.1",
+  "info": {
+    "id": "3XXfDS",
+    "name": "Halloween Radiosity",
+    "username": "kaiavintr",
+    "description": "Radiosity method is used for indirect illumination outside the pumpkins. Rendering should be fast after the first 12 frames.\n\nDrag (or tap on touchscreen) in center to rotate, right side to zoom, bottom to shift left/right, left side to shift up/down.",
+    "tags": [
+      "gi",
+      "cornellbox",
+      "flame",
+      "globalillumination",
+      "implicitsurface",
+      "ao",
+      "ambientocclusion",
+      "candle",
+      "halloween",
+      "pumpkin",
+      "radiosity"
+    ],
+    "likes": 54,
+    "published": 1
+  },
+  "renderpass": [
+    {
+      "name": "Image",
+      "type": "image",
+      "source": "image.glsl",
+      "inputs": [
+        {
+          "id": "4dXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "XsXGR8",
+          "type": "buffer",
+          "channel": 1,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "4sXGR8",
+          "type": "buffer",
+          "channel": 2,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "XdfGR8",
+          "type": "buffer",
+          "channel": 3,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    },
+    {
+      "name": "Common",
+      "type": "common",
+      "source": "common.glsl",
+      "inputs": []
+    },
+    {
+      "name": "Buffer A",
+      "type": "buffer",
+      "source": "buffer_a.glsl",
+      "inputs": [
+        {
+          "id": "4dXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    },
+    {
+      "name": "Buffer B",
+      "type": "buffer",
+      "source": "buffer_b.glsl",
+      "inputs": [
+        {
+          "id": "4dXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "XsXGR8",
+          "type": "buffer",
+          "channel": 1,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    },
+    {
+      "name": "Buffer C",
+      "type": "buffer",
+      "source": "buffer_c.glsl",
+      "inputs": [
+        {
+          "id": "4dXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "XsXGR8",
+          "type": "buffer",
+          "channel": 1,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "4sXGR8",
+          "type": "buffer",
+          "channel": 2,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    },
+    {
+      "name": "Buffer D",
+      "type": "buffer",
+      "source": "buffer_d.glsl",
+      "inputs": [
+        {
+          "id": "4dXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "XdfGR8",
+          "type": "buffer",
+          "channel": 1,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "ver": "0.1",
+  "info": {
+    "id": "ld3SRr",
+    "name": "Image Based PBR Material",
+    "username": "Bers",
+    "description": "Importance sampling is used, since no cubemap mipmap available for blurry reflections. Cubemap sampling was HDR-ized and gamma balanced.",
+    "tags": [
+      "importancesampling",
+      "hdr",
+      "ibl",
+      "pbr"
+    ],
+    "likes": 229,
+    "published": 3
+  },
+  "renderpass": [
+    {
+      "name": "Image",
+      "type": "image",
+      "source": "image.glsl",
+      "inputs": [
+        {
+          "id": "XsfGzn",
+          "type": "cubemap",
+          "channel": 2,
+          "filepath": "/cubemaps/585f9546c092f53ded45332b343144396c0b2d70d9965f585ebc172080d8aa58.jpg",
+          "sampler": {
+            "filter": "mipmap",
+            "wrap": "clamp",
+            "vflip": "false",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "4sfGzn",
+          "type": "cubemap",
+          "channel": 3,
+          "filepath": "/cubemaps/793a105653fbdadabdc1325ca08675e1ce48ae5f12e37973829c87bea4be3232.png",
+          "sampler": {
+            "filter": "mipmap",
+            "wrap": "clamp",
+            "vflip": "false",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "4dXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "linear",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "XsXGR8",
+          "type": "buffer",
+          "channel": 1,
+          "filepath": null,
+          "sampler": {
+            "filter": "linear",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    },
+    {
+      "name": "Buffer A",
+      "type": "buffer",
+      "source": "buffer_a.glsl",
+      "inputs": [
+        {
+          "id": "4dXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "linear",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    },
+    {
+      "name": "Buffer B",
+      "type": "buffer",
+      "source": "buffer_b.glsl",
+      "inputs": [
+        {
+          "id": "XdXGzn",
+          "type": "texture",
+          "channel": 1,
+          "filepath": "/textures/3083c722c0c738cad0f468383167a0d246f91af2bfa373e9c5c094fb8c8413e0.png",
+          "sampler": {
+            "filter": "mipmap",
+            "wrap": "repeat",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "Xsf3zn",
+          "type": "texture",
+          "channel": 2,
+          "filepath": "/textures/f735bee5b64ef98879dc618b016ecf7939a5756040c2cde21ccb15e69a6e1cfb.png",
+          "sampler": {
+            "filter": "mipmap",
+            "wrap": "repeat",
+            "vflip": "false",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "4dXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "linear",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    }
+  ]
+}

@@ -27,3 +27,33 @@ just like ShaderToy, but fully offline and portable.
 ```bash
 $ shaderdock project.json
 ```
+
+---
+
+## 🎯 Preparing Demos from ShaderToy Dumps
+
+1. Download the ShaderToy JSON (the POST `https://www.shadertoy.com/shadertoy` response) and save it locally.  
+2. Run the helper to unpack it:
+   ```bash
+   python3 scripts/parse_shadertoy.py "My Shader.json"
+   ```
+3. The script creates `assets/demos/<shader_name>/` containing:
+   - One GLSL file per render pass (e.g., `image.glsl`, `buffer_a.glsl`, …).
+   - `demo.json`, a cleaned manifest ready for ShaderDock.
+   - `resource_urls.txt`, grouped `[TEXTURES]` / `[CUBEMAPS]` lists formatted as
+     ```text
+     [TEXTURES]
+     [
+       "https://www.shadertoy.com/media/a/xxxx.png",
+       "https://www.shadertoy.com/media/a/yyyy.png"
+     ].forEach(url => window.open(url));
+     ```
+     Paste each block into a browser console to open all download tabs at once, then store the files under `assets/textures` or `assets/cubemaps` using the same filenames referenced in `demo.json`.
+
+---
+
+## ⚠️ Disclaimer
+
+- This tooling is intended for personal/offline experimentation only.  
+- ShaderToy assets remain the property of their respective authors—obey their licenses and ShaderToy’s terms of service.  
+- You must manually download resources via the provided URLs; the script does not bypass any protections or perform automated scraping.
