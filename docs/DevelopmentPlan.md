@@ -62,10 +62,6 @@
 4. **Texture LOD**：验证单纹理 + `textureLod` 函数行为。
 5. **调试辅助**：增加日志/ImGui overlay（可选）显示当前 Pass、FPS、Uniform 值，方便回归其它 ShaderToy demo。
 
-### 阶段 E：质量与文档
-1. **错误处理**：缺失资源/Uniform/GL 调用失败时打印明确日志并安全退出。
-2. **热重载（可选）**：监视 GLSL 文件变化并重新编译，提升迭代效率。
-3. **文档**：在 README/Build.md 中补充 Shader Inputs、运行命令与注意事项；维护本开发计划随进度更新。
 
 ---
-完成以上阶段即可覆盖三个示例 Demo 的需求，也为引入更多 ShaderToy 作品奠定基础。按阶段推进并在每一步后运行 bash -ic "msys_exec 'cmake --build build'"  及三份 Demo 验证，将能快速收敛到完整的 ShaderDock Runtime。
+完成以上阶段即可覆盖三个示例 Demo 的需求，也为引入更多 ShaderToy 作品奠定基础。
