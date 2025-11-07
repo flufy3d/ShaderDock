@@ -2,7 +2,9 @@
 
 #include <atomic>
 #include <csignal>
+#include <filesystem>
 #include <string>
+#include <utility>
 
 #include <glad/glad.h>
 
@@ -57,6 +59,10 @@ bool ShaderDockApp::initialize()
     }
 
     if (!load_shaders()) {
+        return false;
+    }
+
+    if (!load_demo_resources()) {
         return false;
     }
 
@@ -130,6 +136,67 @@ bool ShaderDockApp::load_shaders()
     u_resolution_location_ = shader_program_.uniform_location("uResolution");
     SDL_Log("Program uniforms: uTime=%d, uResolution=%d", u_time_location_, u_resolution_location_);
 
+    return true;
+}
+
+bool ShaderDockApp::load_demo_resources()
+{
+    constexpr const char* kDefaultDemoManifest = "assets/demos/Texture_LOD/demo.json";
+    const std::filesystem::path manifest_path = resources::ResolveAssetPath(kDefaultDemoManifest);
+    if (manifest_path.empty()) {
+        SDL_Log("Unable to locate demo manifest at %s", kDefaultDemoManifest);
+        return false;
+    }
+
+    auto manifest = resources::LoadDemoManifest(manifest_path);
+    if (!manifest) {
+        SDL_Log("Failed to parse demo manifest: %s", manifest_path.string().c_str());
+        return false;
+    }
+
+    demo_manifest_ = std::move(*manifest);
+    SDL_Log("Demo '%s' manifest ready.", demo_manifest_->info.name.c_str());
+    return preload_textures();
+}
+
+bool ShaderDockApp::preload_textures()
+{
+    texture_bindings_.clear();
+    if (!demo_manifest_) {
+        SDL_Log("No demo manifest available, cannot preload textures.");
+        return false;
+    }
+
+    for (const auto& pass : demo_manifest_->passes) {
+        for (const auto& input : pass.inputs) {
+            if (!input.resolved_path) {
+                continue;
+            }
+
+            std::shared_ptr<resources::TextureHandle> handle;
+            if (input.type == resources::PassInputType::kTexture) {
+                handle = texture_cache_.load_texture_2d(*input.resolved_path, input.sampler);
+            } else if (input.type == resources::PassInputType::kCubemap) {
+                handle = texture_cache_.load_cubemap(*input.resolved_path, input.sampler);
+            } else {
+                continue;
+            }
+
+            if (!handle) {
+                SDL_Log(
+                    "Failed to preload texture for input %s (%s).",
+                    input.id.c_str(),
+                    input.filepath.c_str());
+                return false;
+            }
+
+            texture_bindings_[input.id] = std::move(handle);
+        }
+    }
+
+    SDL_Log(
+        "Texture preload complete. GPU cache contains %zu entries.",
+        texture_cache_.resident_texture_count());
     return true;
 }
 
@@ -225,6 +292,10 @@ void ShaderDockApp::render_frame(float elapsed_seconds)
 void ShaderDockApp::shutdown()
 {
     running_ = false;
+
+    texture_bindings_.clear();
+    texture_cache_.clear();
+    demo_manifest_.reset();
 
     full_screen_triangle_.shutdown();
     shader_program_.reset();

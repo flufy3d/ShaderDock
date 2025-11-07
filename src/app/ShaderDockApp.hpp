@@ -2,8 +2,15 @@
 
 #include <SDL.h>
 
+#include <memory>
+#include <optional>
+#include <string>
+#include <unordered_map>
+
 #include "render/FullscreenTriangle.hpp"
 #include "render/ShaderProgram.hpp"
+#include "resources/DemoManifest.hpp"
+#include "resources/TextureLoader.hpp"
 
 namespace shaderdock::app {
 
@@ -17,6 +24,8 @@ public:
 private:
     bool create_window_and_context();
     bool load_shaders();
+    bool load_demo_resources();
+    bool preload_textures();
     void process_event(const SDL_Event& event);
     void update_viewport();
     void render_frame(float elapsed_seconds);
@@ -34,6 +43,10 @@ private:
     render::FullscreenTriangle full_screen_triangle_;
     GLint u_time_location_ = -1;
     GLint u_resolution_location_ = -1;
+
+    std::optional<resources::DemoManifest> demo_manifest_;
+    resources::TextureCache texture_cache_;
+    std::unordered_map<std::string, std::shared_ptr<resources::TextureHandle>> texture_bindings_;
 };
 
 } // namespace shaderdock::app

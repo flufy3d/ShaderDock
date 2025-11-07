@@ -17,7 +17,9 @@ set(SHADERDOCK_SOURCES
     src/render/FullscreenTriangle.cpp
     src/render/GlLoader.cpp
     src/render/ShaderProgram.cpp
+    src/resources/DemoManifest.cpp
     src/resources/AssetIO.cpp
+    src/resources/TextureLoader.cpp
     src/resources/stb_image_impl.cpp
     src/third_party/glad/src/glad.c
 )

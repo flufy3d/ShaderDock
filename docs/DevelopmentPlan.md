@@ -2,7 +2,7 @@
 
 ## 1. 目标与现状
 - **项目目标**：离线重现 ShaderToy 管线（Common + Buffer A–D + Image），可加载 JSON 清单、图片/立方体贴图资源，并在 SDL2 + OpenGL ES 3.2 上运行。
-- **当前状态**：阶段 A 的 CMake/GL 基础已完成（GLAD + SDL2 架构、全屏三角形、资源层拆分），程序能够在 SDL2 + GLES 3.2 上稳定渲染测试三角形；后续需补齐 JSON 解析、Pass 调度、纹理/FBO 管理以及 ShaderToy uniform。
+- **当前状态**：阶段 A 的 CMake/GL 基础与资源加载层（Json manifest 解析 + 纹理/立方体贴图缓存）均已完成，程序可在 SDL2 + GLES 3.2 上加载 Demo JSON 并预热外部纹理；后续进入阶段 B，补齐 Pass 调度、FBO 管理与 ShaderToy uniform。
 - **必备第三方库**：解析 `demo.json` 计划使用 JsonCPP；纹理/立方体贴图载入使用 stb_image（含 HDR/8bit 支持）。
 - **运行环境**：WSL 中通过 `msys_exec 'cmake --build build'` 触发 MSYS2 UCRT64 工具链；Linux 后续可共用同一 CMake 项目。
 
