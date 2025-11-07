@@ -20,13 +20,6 @@ just like ShaderToy, but fully offline and portable.
 - ⚡ **Lightweight and fast** – Minimal dependencies, instant startup  
 - 💻 **Cross-platform** – Runs on Linux and Windows (planned macOS support)
 
----
-
-## 🏗️ Example Usage
-
-```bash
-$ shaderdock project.json
-```
 
 ---
 
