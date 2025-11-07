@@ -1,0 +1,249 @@
+#include "app/ShaderDockApp.hpp"
+
+#include <atomic>
+#include <csignal>
+#include <string>
+
+#include <glad/glad.h>
+
+#include "render/GlLoader.hpp"
+#include "resources/AssetIO.hpp"
+
+namespace shaderdock::app {
+
+namespace {
+constexpr int kWindowWidth = 720;
+constexpr int kWindowHeight = 480;
+constexpr Uint32 kFrameDelayMs = 16;
+
+std::atomic_bool g_keep_running{true};
+
+void HandleSigint(int)
+{
+    g_keep_running.store(false);
+}
+} // namespace
+
+bool ShaderDockApp::initialize()
+{
+    if (sdl_initialized_) {
+        return true;
+    }
+
+    SDL_Log("ShaderDock starting...");
+
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        SDL_Log("SDL_Init failed: %s", SDL_GetError());
+        return false;
+    }
+    sdl_initialized_ = true;
+
+    std::signal(SIGINT, HandleSigint);
+
+    if (!create_window_and_context()) {
+        return false;
+    }
+
+    if (!render::LoadGLESBindings()) {
+        SDL_Log("Failed to load OpenGL ES bindings via GLAD.");
+        return false;
+    }
+
+    render::LogGLInfo();
+
+    if (!full_screen_triangle_.initialize()) {
+        SDL_Log("Failed to create fullscreen triangle geometry.");
+        return false;
+    }
+
+    if (!load_shaders()) {
+        return false;
+    }
+
+    SDL_GL_GetDrawableSize(window_, &drawable_width_, &drawable_height_);
+    glViewport(0, 0, drawable_width_, drawable_height_);
+    glClearColor(0.0F, 0.0F, 0.0F, 1.0F);
+
+    return true;
+}
+
+bool ShaderDockApp::create_window_and_context()
+{
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+
+    window_ = SDL_CreateWindow(
+        "ShaderDock",
+        SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED,
+        kWindowWidth,
+        kWindowHeight,
+        SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    if (window_ == nullptr) {
+        SDL_Log("SDL_CreateWindow failed: %s", SDL_GetError());
+        return false;
+    }
+
+    SDL_SetWindowResizable(window_, SDL_FALSE);
+
+    gl_context_ = SDL_GL_CreateContext(window_);
+    if (gl_context_ == nullptr) {
+        SDL_Log("SDL_GL_CreateContext failed: %s", SDL_GetError());
+        return false;
+    }
+
+    if (SDL_GL_MakeCurrent(window_, gl_context_) != 0) {
+        SDL_Log("SDL_GL_MakeCurrent failed: %s", SDL_GetError());
+        return false;
+    }
+
+    if (SDL_GL_SetSwapInterval(1) != 0) {
+        SDL_Log("SDL_GL_SetSwapInterval failed: %s", SDL_GetError());
+    }
+
+    viewport_dirty_ = true;
+    return true;
+}
+
+bool ShaderDockApp::load_shaders()
+{
+    const std::string vertex_source = resources::LoadAssetText("assets/test_triangle.vert");
+    const std::string fragment_source = resources::LoadAssetText("assets/test_triangle.frag");
+
+    if (vertex_source.empty() || fragment_source.empty()) {
+        SDL_Log("Shader sources not available; aborting.");
+        return false;
+    }
+
+    if (!shader_program_.compile_from_source(vertex_source.c_str(), fragment_source.c_str())) {
+        SDL_Log("Failed to compile/link shader program.");
+        return false;
+    }
+
+    u_time_location_ = shader_program_.uniform_location("uTime");
+    u_resolution_location_ = shader_program_.uniform_location("uResolution");
+    SDL_Log("Program uniforms: uTime=%d, uResolution=%d", u_time_location_, u_resolution_location_);
+
+    return true;
+}
+
+void ShaderDockApp::run()
+{
+    if (!window_ || !gl_context_) {
+        SDL_Log("ShaderDockApp::initialize must succeed before run().");
+        return;
+    }
+
+    running_ = true;
+    start_ticks_ = SDL_GetTicks();
+
+    SDL_Event event{};
+    bool sigint_reported = false;
+
+    while (running_) {
+        while (SDL_PollEvent(&event) != 0) {
+            process_event(event);
+        }
+
+        if (!g_keep_running.load(std::memory_order_relaxed)) {
+            if (!sigint_reported) {
+                SDL_Log("SIGINT received, shutting down gracefully.");
+                sigint_reported = true;
+            }
+            running_ = false;
+        }
+
+        if (!running_) {
+            break;
+        }
+
+        update_viewport();
+
+        const float elapsed_seconds =
+            static_cast<float>(SDL_GetTicks() - start_ticks_) * 0.001F;
+
+        render_frame(elapsed_seconds);
+        SDL_GL_SwapWindow(window_);
+        SDL_Delay(kFrameDelayMs);
+    }
+}
+
+void ShaderDockApp::process_event(const SDL_Event& event)
+{
+    switch (event.type) {
+        case SDL_QUIT:
+        case SDL_KEYDOWN:
+        case SDL_MOUSEBUTTONDOWN:
+            running_ = false;
+            break;
+        case SDL_WINDOWEVENT:
+            if (event.window.event == SDL_WINDOWEVENT_RESIZED ||
+                event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                viewport_dirty_ = true;
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+void ShaderDockApp::update_viewport()
+{
+    if (!viewport_dirty_ || window_ == nullptr) {
+        return;
+    }
+
+    SDL_GL_GetDrawableSize(window_, &drawable_width_, &drawable_height_);
+    glViewport(0, 0, drawable_width_, drawable_height_);
+    viewport_dirty_ = false;
+}
+
+void ShaderDockApp::render_frame(float elapsed_seconds)
+{
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    shader_program_.use();
+    if (u_time_location_ >= 0) {
+        glUniform1f(u_time_location_, elapsed_seconds);
+    }
+    if (u_resolution_location_ >= 0) {
+        glUniform2f(
+            u_resolution_location_,
+            static_cast<float>(drawable_width_),
+            static_cast<float>(drawable_height_));
+    }
+
+    full_screen_triangle_.draw();
+}
+
+void ShaderDockApp::shutdown()
+{
+    running_ = false;
+
+    full_screen_triangle_.shutdown();
+    shader_program_.reset();
+
+    if (gl_context_ != nullptr) {
+        SDL_GL_DeleteContext(gl_context_);
+        gl_context_ = nullptr;
+    }
+    if (window_ != nullptr) {
+        SDL_DestroyWindow(window_);
+        window_ = nullptr;
+    }
+
+    if (sdl_initialized_) {
+        SDL_Quit();
+        sdl_initialized_ = false;
+    }
+
+    g_keep_running.store(true, std::memory_order_relaxed);
+}
+
+} // namespace shaderdock::app
