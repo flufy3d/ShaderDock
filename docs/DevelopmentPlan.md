@@ -2,9 +2,9 @@
 
 ## 1. 目标与现状
 - **项目目标**：离线重现 ShaderToy 管线（Common + Buffer A–D + Image），可加载 JSON 清单、图片/立方体贴图资源，并在 SDL2 + OpenGL ES 3.2 上运行。
-- **当前状态**：阶段 A 的 CMake/GL 基础与资源加载层（Json manifest 解析 + 纹理/立方体贴图缓存）均已完成，程序可在 SDL2 + GLES 3.2 上加载 Demo JSON 并预热外部纹理；后续进入阶段 B，补齐 Pass 调度、FBO 管理与 ShaderToy uniform。
+- **当前状态**：阶段 A 完成，阶段 B 也已交付——Common 预处理、Pass DAG、双 FBO/Ping-Pong 与多通道纹理绑定全部落地，可渲染 Texture LOD 等 demo；接下来进入阶段 C，补齐 ShaderDock 的时间/鼠标/iDate 等动态 uniform 与交互。
 - **必备第三方库**：解析 `demo.json` 计划使用 JsonCPP；纹理/立方体贴图载入使用 stb_image（含 HDR/8bit 支持）。
-- **运行环境**：WSL 中通过 `msys_exec 'cmake --build build'` 触发 MSYS2 UCRT64 工具链；Linux 后续可共用同一 CMake 项目。
+- **运行环境**：Windows或者Linux。
 
 ## 2. ShaderToy Shader Inputs（WebGL → OpenGL ES 3.2 映射）
 > ShaderToy 着色器入口为 `void mainImage(out vec4 fragColor, in vec2 fragCoord);`，我们在编译阶段注入统一的 ES 3.2 包装（`main` 调用 `mainImage`）并提供以下 uniform。  
@@ -68,4 +68,4 @@
 3. **文档**：在 README/Build.md 中补充 Shader Inputs、运行命令与注意事项；维护本开发计划随进度更新。
 
 ---
-完成以上阶段即可覆盖三个示例 Demo 的需求，也为引入更多 ShaderToy 作品奠定基础。按阶段推进并在每一步后运行 `msys_exec 'cmake --build build'` 及三份 Demo 验证，将能快速收敛到完整的 ShaderDock Runtime。
+完成以上阶段即可覆盖三个示例 Demo 的需求，也为引入更多 ShaderToy 作品奠定基础。按阶段推进并在每一步后运行 bash -ic "msys_exec 'cmake --build build'"  及三份 Demo 验证，将能快速收敛到完整的 ShaderDock Runtime。

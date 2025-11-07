@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 #include "render/FullscreenTriangle.hpp"
-#include "render/ShaderProgram.hpp"
+#include "render/RenderPipeline.hpp"
 #include "resources/DemoManifest.hpp"
 #include "resources/TextureLoader.hpp"
 
@@ -23,12 +23,12 @@ public:
 
 private:
     bool create_window_and_context();
-    bool load_shaders();
     bool load_demo_resources();
     bool preload_textures();
+    bool build_pipeline();
     void process_event(const SDL_Event& event);
     void update_viewport();
-    void render_frame(float elapsed_seconds);
+    void render_frame(float elapsed_seconds, float delta_seconds);
 
     SDL_Window* window_ = nullptr;
     SDL_GLContext gl_context_ = nullptr;
@@ -38,11 +38,12 @@ private:
     int drawable_width_ = 720;
     int drawable_height_ = 480;
     Uint32 start_ticks_ = 0;
+    Uint32 last_frame_ticks_ = 0;
+    int frame_index_ = 0;
 
-    render::ShaderProgram shader_program_;
     render::FullscreenTriangle full_screen_triangle_;
-    GLint u_time_location_ = -1;
-    GLint u_resolution_location_ = -1;
+    render::RenderPipeline pipeline_;
+    render::FrameUniforms frame_uniforms_;
 
     std::optional<resources::DemoManifest> demo_manifest_;
     resources::TextureCache texture_cache_;

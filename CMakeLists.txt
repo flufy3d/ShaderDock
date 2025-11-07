@@ -16,6 +16,10 @@ set(SHADERDOCK_SOURCES
     src/app/ShaderDockApp.cpp
     src/render/FullscreenTriangle.cpp
     src/render/GlLoader.cpp
+    src/render/PassGraph.cpp
+    src/render/PassInstance.cpp
+    src/render/PipelineTypes.cpp
+    src/render/RenderPipeline.cpp
     src/render/ShaderProgram.cpp
     src/resources/DemoManifest.cpp
     src/resources/AssetIO.cpp

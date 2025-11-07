@@ -9,6 +9,7 @@
 #include <glad/glad.h>
 
 #include "render/GlLoader.hpp"
+#include "render/RenderPipeline.hpp"
 #include "resources/AssetIO.hpp"
 
 namespace shaderdock::app {
@@ -58,16 +59,16 @@ bool ShaderDockApp::initialize()
         return false;
     }
 
-    if (!load_shaders()) {
-        return false;
-    }
-
     if (!load_demo_resources()) {
         return false;
     }
 
     SDL_GL_GetDrawableSize(window_, &drawable_width_, &drawable_height_);
     glViewport(0, 0, drawable_width_, drawable_height_);
+    pipeline_.resize_targets(drawable_width_, drawable_height_);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_BLEND);
     glClearColor(0.0F, 0.0F, 0.0F, 1.0F);
 
     return true;
@@ -117,28 +118,6 @@ bool ShaderDockApp::create_window_and_context()
     return true;
 }
 
-bool ShaderDockApp::load_shaders()
-{
-    const std::string vertex_source = resources::LoadAssetText("assets/test_triangle.vert");
-    const std::string fragment_source = resources::LoadAssetText("assets/test_triangle.frag");
-
-    if (vertex_source.empty() || fragment_source.empty()) {
-        SDL_Log("Shader sources not available; aborting.");
-        return false;
-    }
-
-    if (!shader_program_.compile_from_source(vertex_source.c_str(), fragment_source.c_str())) {
-        SDL_Log("Failed to compile/link shader program.");
-        return false;
-    }
-
-    u_time_location_ = shader_program_.uniform_location("uTime");
-    u_resolution_location_ = shader_program_.uniform_location("uResolution");
-    SDL_Log("Program uniforms: uTime=%d, uResolution=%d", u_time_location_, u_resolution_location_);
-
-    return true;
-}
-
 bool ShaderDockApp::load_demo_resources()
 {
     constexpr const char* kDefaultDemoManifest = "assets/demos/Texture_LOD/demo.json";
@@ -156,7 +135,10 @@ bool ShaderDockApp::load_demo_resources()
 
     demo_manifest_ = std::move(*manifest);
     SDL_Log("Demo '%s' manifest ready.", demo_manifest_->info.name.c_str());
-    return preload_textures();
+    if (!preload_textures()) {
+        return false;
+    }
+    return build_pipeline();
 }
 
 bool ShaderDockApp::preload_textures()
@@ -200,6 +182,22 @@ bool ShaderDockApp::preload_textures()
     return true;
 }
 
+bool ShaderDockApp::build_pipeline()
+{
+    if (!demo_manifest_) {
+        SDL_Log("Cannot build pipeline without a demo manifest.");
+        return false;
+    }
+
+    if (!pipeline_.initialize(*demo_manifest_, texture_bindings_, &full_screen_triangle_)) {
+        SDL_Log("Failed to build render pipeline.");
+        return false;
+    }
+
+    pipeline_.resize_targets(drawable_width_, drawable_height_);
+    return true;
+}
+
 void ShaderDockApp::run()
 {
     if (!window_ || !gl_context_) {
@@ -209,6 +207,8 @@ void ShaderDockApp::run()
 
     running_ = true;
     start_ticks_ = SDL_GetTicks();
+    last_frame_ticks_ = start_ticks_;
+    frame_index_ = 0;
 
     SDL_Event event{};
     bool sigint_reported = false;
@@ -232,10 +232,12 @@ void ShaderDockApp::run()
 
         update_viewport();
 
-        const float elapsed_seconds =
-            static_cast<float>(SDL_GetTicks() - start_ticks_) * 0.001F;
+        const Uint32 now = SDL_GetTicks();
+        const float elapsed_seconds = static_cast<float>(now - start_ticks_) * 0.001F;
+        const float delta_seconds = static_cast<float>(now - last_frame_ticks_) * 0.001F;
+        last_frame_ticks_ = now;
 
-        render_frame(elapsed_seconds);
+        render_frame(elapsed_seconds, delta_seconds);
         SDL_GL_SwapWindow(window_);
         SDL_Delay(kFrameDelayMs);
     }
@@ -268,25 +270,21 @@ void ShaderDockApp::update_viewport()
 
     SDL_GL_GetDrawableSize(window_, &drawable_width_, &drawable_height_);
     glViewport(0, 0, drawable_width_, drawable_height_);
+    pipeline_.resize_targets(drawable_width_, drawable_height_);
     viewport_dirty_ = false;
 }
 
-void ShaderDockApp::render_frame(float elapsed_seconds)
+void ShaderDockApp::render_frame(float elapsed_seconds, float delta_seconds)
 {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    shader_program_.use();
-    if (u_time_location_ >= 0) {
-        glUniform1f(u_time_location_, elapsed_seconds);
-    }
-    if (u_resolution_location_ >= 0) {
-        glUniform2f(
-            u_resolution_location_,
-            static_cast<float>(drawable_width_),
-            static_cast<float>(drawable_height_));
-    }
+    frame_uniforms_.time_seconds = elapsed_seconds;
+    frame_uniforms_.delta_seconds = delta_seconds;
+    frame_uniforms_.frame_rate = (delta_seconds > 0.0F) ? (1.0F / delta_seconds) : 0.0F;
+    frame_uniforms_.frame_index = frame_index_++;
 
-    full_screen_triangle_.draw();
+    pipeline_.render(frame_uniforms_, drawable_width_, drawable_height_);
 }
 
 void ShaderDockApp::shutdown()
@@ -297,8 +295,8 @@ void ShaderDockApp::shutdown()
     texture_cache_.clear();
     demo_manifest_.reset();
 
+    pipeline_.shutdown();
     full_screen_triangle_.shutdown();
-    shader_program_.reset();
 
     if (gl_context_ != nullptr) {
         SDL_GL_DeleteContext(gl_context_);
