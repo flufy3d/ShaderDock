@@ -2,6 +2,7 @@
 
 #include <SDL.h>
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <string>
@@ -29,6 +30,8 @@ private:
     void process_event(const SDL_Event& event);
     void update_viewport();
     void render_frame(float elapsed_seconds, float delta_seconds);
+    void update_mouse_position(int window_x, int window_y);
+    std::array<float, 4> build_mouse_uniform() const;
 
     SDL_Window* window_ = nullptr;
     SDL_GLContext gl_context_ = nullptr;
@@ -48,6 +51,12 @@ private:
     std::optional<resources::DemoManifest> demo_manifest_;
     resources::TextureCache texture_cache_;
     std::unordered_map<std::string, std::shared_ptr<resources::TextureHandle>> texture_bindings_;
+
+    bool mouse_button_down_ = false;
+    float mouse_current_x_ = 0.0F;
+    float mouse_current_y_ = 0.0F;
+    float mouse_click_x_ = 0.0F;
+    float mouse_click_y_ = 0.0F;
 };
 
 } // namespace shaderdock::app

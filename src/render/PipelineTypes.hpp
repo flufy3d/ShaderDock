@@ -25,6 +25,7 @@ struct BufferSurface {
     int front_index = 0;
     std::array<GLuint, 2> textures{0, 0};
     std::array<GLuint, 2> framebuffers{0, 0};
+    float last_updated_seconds = 0.0F;
 
     [[nodiscard]] GLuint read_texture() const;
     [[nodiscard]] GLuint write_framebuffer() const;

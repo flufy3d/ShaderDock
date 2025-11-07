@@ -2,7 +2,7 @@
 
 ## 1. 目标与现状
 - **项目目标**：离线重现 ShaderToy 管线（Common + Buffer A–D + Image），可加载 JSON 清单、图片/立方体贴图资源，并在 SDL2 + OpenGL ES 3.2 上运行。
-- **当前状态**：阶段 A 完成，阶段 B 也已交付——Common 预处理、Pass DAG、双 FBO/Ping-Pong 与多通道纹理绑定全部落地，可渲染 Texture LOD 等 demo；接下来进入阶段 C，补齐 ShaderDock 的时间/鼠标/iDate 等动态 uniform 与交互。
+- **当前状态**：阶段 A 与阶段 B 均已完成，阶段 C（时间/鼠标/iDate 等 ShaderToy uniform 与交互）也已经交付；当前准备进入阶段 D，集中验证 Demo 并完善调试工具。
 - **必备第三方库**：解析 `demo.json` 计划使用 JsonCPP；纹理/立方体贴图载入使用 stb_image（含 HDR/8bit 支持）。
 - **运行环境**：Windows或者Linux。
 

@@ -124,6 +124,7 @@ void RenderPipeline::render(const FrameUniforms& frame, int drawable_width, int 
 
         if (rendering_to_buffer) {
             target_surface->swap();
+            target_surface->last_updated_seconds = frame.time_seconds;
         }
     }
 

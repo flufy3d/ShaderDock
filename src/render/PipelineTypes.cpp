@@ -41,6 +41,7 @@ void BufferSurface::reset()
     width = 0;
     height = 0;
     front_index = 0;
+    last_updated_seconds = 0.0F;
 }
 
 } // namespace shaderdock::render

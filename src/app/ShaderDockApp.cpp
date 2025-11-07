@@ -1,8 +1,11 @@
 #include "app/ShaderDockApp.hpp"
 
+#include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <csignal>
 #include <filesystem>
+#include <ctime>
 #include <string>
 #include <utility>
 
@@ -24,6 +27,30 @@ std::atomic_bool g_keep_running{true};
 void HandleSigint(int)
 {
     g_keep_running.store(false);
+}
+
+std::array<float, 4> BuildDateUniform()
+{
+    using Clock = std::chrono::system_clock;
+    const auto now = Clock::now();
+    const std::time_t seconds = Clock::to_time_t(now);
+    std::tm local_time{};
+#if defined(_WIN32)
+    localtime_s(&local_time, &seconds);
+#else
+    localtime_r(&seconds, &local_time);
+#endif
+
+    const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
+    const float seconds_today =
+        static_cast<float>(local_time.tm_hour * 3600 + local_time.tm_min * 60 + local_time.tm_sec) +
+        static_cast<float>(millis) * 0.001F;
+
+    return {
+        static_cast<float>(local_time.tm_year + 1900),
+        static_cast<float>(local_time.tm_mon + 1),
+        static_cast<float>(local_time.tm_mday),
+        seconds_today};
 }
 } // namespace
 
@@ -247,9 +274,29 @@ void ShaderDockApp::process_event(const SDL_Event& event)
 {
     switch (event.type) {
         case SDL_QUIT:
-        case SDL_KEYDOWN:
-        case SDL_MOUSEBUTTONDOWN:
             running_ = false;
+            break;
+        case SDL_KEYDOWN:
+            if (event.key.keysym.sym == SDLK_ESCAPE) {
+                running_ = false;
+            }
+            break;
+        case SDL_MOUSEBUTTONDOWN:
+            if (event.button.button == SDL_BUTTON_LEFT) {
+                update_mouse_position(event.button.x, event.button.y);
+                mouse_button_down_ = true;
+                mouse_click_x_ = mouse_current_x_;
+                mouse_click_y_ = mouse_current_y_;
+            }
+            break;
+        case SDL_MOUSEBUTTONUP:
+            if (event.button.button == SDL_BUTTON_LEFT) {
+                update_mouse_position(event.button.x, event.button.y);
+                mouse_button_down_ = false;
+            }
+            break;
+        case SDL_MOUSEMOTION:
+            update_mouse_position(event.motion.x, event.motion.y);
             break;
         case SDL_WINDOWEVENT:
             if (event.window.event == SDL_WINDOWEVENT_RESIZED ||
@@ -281,10 +328,57 @@ void ShaderDockApp::render_frame(float elapsed_seconds, float delta_seconds)
 
     frame_uniforms_.time_seconds = elapsed_seconds;
     frame_uniforms_.delta_seconds = delta_seconds;
-    frame_uniforms_.frame_rate = (delta_seconds > 0.0F) ? (1.0F / delta_seconds) : 0.0F;
+    if (delta_seconds > 0.0F) {
+        frame_uniforms_.frame_rate = 1.0F / delta_seconds;
+    }
     frame_uniforms_.frame_index = frame_index_++;
+    frame_uniforms_.channel_time.fill(0.0F);
+    frame_uniforms_.mouse = build_mouse_uniform();
+    frame_uniforms_.date = BuildDateUniform();
 
     pipeline_.render(frame_uniforms_, drawable_width_, drawable_height_);
+}
+
+void ShaderDockApp::update_mouse_position(int window_x, int window_y)
+{
+    if (window_ == nullptr) {
+        return;
+    }
+
+    int window_width = 0;
+    int window_height = 0;
+    SDL_GetWindowSize(window_, &window_width, &window_height);
+
+    if (window_width <= 0 || window_height <= 0 || drawable_width_ <= 0 || drawable_height_ <= 0) {
+        mouse_current_x_ = 0.0F;
+        mouse_current_y_ = 0.0F;
+        return;
+    }
+
+    const float scale_x = static_cast<float>(drawable_width_) / static_cast<float>(window_width);
+    const float scale_y = static_cast<float>(drawable_height_) / static_cast<float>(window_height);
+
+    float pixel_x = static_cast<float>(window_x) * scale_x;
+    float pixel_y = static_cast<float>(window_y) * scale_y;
+
+    pixel_x = std::clamp(pixel_x, 0.0F, static_cast<float>(drawable_width_));
+    pixel_y = std::clamp(pixel_y, 0.0F, static_cast<float>(drawable_height_));
+
+    mouse_current_x_ = pixel_x;
+    mouse_current_y_ = static_cast<float>(drawable_height_) - pixel_y - 1.0F;
+    mouse_current_y_ = std::clamp(mouse_current_y_, 0.0F, static_cast<float>(drawable_height_));
+}
+
+std::array<float, 4> ShaderDockApp::build_mouse_uniform() const
+{
+    std::array<float, 4> mouse{0.0F, 0.0F, mouse_click_x_, mouse_click_y_};
+    mouse[2] = mouse_click_x_;
+    mouse[3] = mouse_click_y_;
+    if (mouse_button_down_) {
+        mouse[0] = mouse_current_x_;
+        mouse[1] = mouse_current_y_;
+    }
+    return mouse;
 }
 
 void ShaderDockApp::shutdown()

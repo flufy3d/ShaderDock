@@ -150,6 +150,39 @@ void PassInstance::unbind_inputs() const
 
 void PassInstance::apply_uniforms(const FrameUniforms& frame, int target_width, int target_height) const
 {
+    std::array<float, 4> channel_time = frame.channel_time;
+    std::array<float, 12> channel_resolution{};
+
+    for (const auto& binding : inputs_) {
+        if (binding.channel < 0 || binding.channel > 3) {
+            continue;
+        }
+
+        float width = 0.0F;
+        float height = 0.0F;
+        float time_value = channel_time[static_cast<std::size_t>(binding.channel)];
+
+        if (binding.type == resources::PassInputType::kTexture || binding.type == resources::PassInputType::kCubemap) {
+            if (binding.texture) {
+                width = static_cast<float>(binding.texture->width());
+                height = static_cast<float>(binding.texture->height());
+            }
+            time_value = frame.time_seconds;
+        } else if (binding.type == resources::PassInputType::kBuffer) {
+            if (binding.buffer != nullptr) {
+                width = static_cast<float>(binding.buffer->width);
+                height = static_cast<float>(binding.buffer->height);
+                time_value = binding.buffer->last_updated_seconds;
+            }
+        }
+
+        const int base = binding.channel * 3;
+        channel_resolution[static_cast<std::size_t>(base)] = width;
+        channel_resolution[static_cast<std::size_t>(base + 1)] = height;
+        channel_resolution[static_cast<std::size_t>(base + 2)] = 1.0F;
+        channel_time[static_cast<std::size_t>(binding.channel)] = time_value;
+    }
+
     if (uniforms_.iResolution >= 0) {
         glUniform3f(
             uniforms_.iResolution,
@@ -176,35 +209,11 @@ void PassInstance::apply_uniforms(const FrameUniforms& frame, int target_width, 
         glUniform4fv(uniforms_.iDate, 1, frame.date.data());
     }
     if (uniforms_.iChannelTime >= 0) {
-        glUniform1fv(uniforms_.iChannelTime, 4, frame.channel_time.data());
+        glUniform1fv(uniforms_.iChannelTime, 4, channel_time.data());
     }
 
     if (uniforms_.iChannelResolution >= 0) {
-        std::array<float, 12> packed{};
-        for (const auto& binding : inputs_) {
-            if (binding.channel < 0 || binding.channel > 3) {
-                continue;
-            }
-            float width = 0.0F;
-            float height = 0.0F;
-            if (binding.type == resources::PassInputType::kTexture || binding.type == resources::PassInputType::kCubemap) {
-                if (binding.texture) {
-                    width = static_cast<float>(binding.texture->width());
-                    height = static_cast<float>(binding.texture->height());
-                }
-            } else if (binding.type == resources::PassInputType::kBuffer) {
-                if (binding.buffer != nullptr) {
-                    width = static_cast<float>(binding.buffer->width);
-                    height = static_cast<float>(binding.buffer->height);
-                }
-            }
-
-            const int base = binding.channel * 3;
-            packed[static_cast<std::size_t>(base)] = width;
-            packed[static_cast<std::size_t>(base + 1)] = height;
-            packed[static_cast<std::size_t>(base + 2)] = 1.0F;
-        }
-        glUniform3fv(uniforms_.iChannelResolution, 4, packed.data());
+        glUniform3fv(uniforms_.iChannelResolution, 4, channel_resolution.data());
     }
 }
 
