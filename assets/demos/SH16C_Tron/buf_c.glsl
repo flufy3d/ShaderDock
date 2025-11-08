@@ -148,7 +148,7 @@ float sprite(vec2 spr, vec2 size, vec2 uv)
 }
 
 //Prints a character and moves the print position forward by 1 character width.
-float char(vec2 ch, vec2 uv)
+float drawChar(vec2 ch, vec2 uv)
 {
     float px = sprite(ch, CHAR_SIZE, uv/font_size - print_pos);
     print_pos.x += CHAR_SPACING.x;
@@ -184,48 +184,48 @@ vec3 mainScreenText(vec2 uv, float playerVsGpu)
     font_size = mix(5., 7., playerVsGpu);
     print_pos = vec2(-STRWIDTH(13.0)/2.0, -150./font_size -STRHEIGHT(1.0)/2.0);
     
-    col = char(ch_P,uv);
-    col += char(ch_L,uv);
-    col += char(ch_A,uv);
-    col += char(ch_Y,uv);
-    col += char(ch_E,uv);
-    col += char(ch_R,uv);
+    col = drawChar(ch_P,uv);
+    col += drawChar(ch_L,uv);
+    col += drawChar(ch_A,uv);
+    col += drawChar(ch_Y,uv);
+    col += drawChar(ch_E,uv);
+    col += drawChar(ch_R,uv);
     
-    col += char(ch_spc,uv);
+    col += drawChar(ch_spc,uv);
     
-    col += char(ch_v,uv);
-    col += char(ch_s,uv);
+    col += drawChar(ch_v,uv);
+    col += drawChar(ch_s,uv);
     
-    col += char(ch_spc,uv);
+    col += drawChar(ch_spc,uv);
     
-    col += char(ch_G,uv);
-    col += char(ch_P,uv);
-    col += char(ch_U,uv);
+    col += drawChar(ch_G,uv);
+    col += drawChar(ch_P,uv);
+    col += drawChar(ch_U,uv);
     c += mix(vec3(0.5), vec3(1.,.9,0.1), playerVsGpu)*col;
     
     font_size = mix(7., 5., playerVsGpu);
     print_pos = vec2(-STRWIDTH(16.0)/2.0, -250./font_size -STRHEIGHT(1.0)/2.0);
        
-    col = char(ch_P,uv);
-    col += char(ch_L,uv);
-    col += char(ch_A,uv);
-    col += char(ch_Y,uv);
-    col += char(ch_E,uv);
-    col += char(ch_R,uv);
+    col = drawChar(ch_P,uv);
+    col += drawChar(ch_L,uv);
+    col += drawChar(ch_A,uv);
+    col += drawChar(ch_Y,uv);
+    col += drawChar(ch_E,uv);
+    col += drawChar(ch_R,uv);
     
-    col += char(ch_spc,uv);
+    col += drawChar(ch_spc,uv);
     
-    col += char(ch_v,uv);
-    col += char(ch_s,uv);
+    col += drawChar(ch_v,uv);
+    col += drawChar(ch_s,uv);
     
-    col += char(ch_spc,uv);
+    col += drawChar(ch_spc,uv);
     
-    col += char(ch_P,uv);
-    col += char(ch_L,uv);
-    col += char(ch_A,uv);
-    col += char(ch_Y,uv);
-    col += char(ch_E,uv);
-    col += char(ch_R,uv);
+    col += drawChar(ch_P,uv);
+    col += drawChar(ch_L,uv);
+    col += drawChar(ch_A,uv);
+    col += drawChar(ch_Y,uv);
+    col += drawChar(ch_E,uv);
+    col += drawChar(ch_R,uv);
     c += mix(vec3(1.,.9,.1), vec3(0.5), playerVsGpu)*col;
     
     return c;
@@ -235,7 +235,7 @@ vec3 gameStartCounter(vec2 uv, float state)
 {        
     font_size = 16.;
     print_pos = vec2(-STRWIDTH(1.0)/2.0, -STRHEIGHT(1.0)/2.0);
-    float col = char(get_digit(int(-state)+1),uv);       
+    float col = drawChar(get_digit(int(-state)+1),uv);       
 
     return vec3(.1,.9,1.)*col;
 }
@@ -245,62 +245,62 @@ vec3 gameHud(vec2 uv, float playerVsGpu, vec2 wins, vec2 boosts)
     font_size = 6.;
     print_pos = vec2(-490.*(iResolution.x/iResolution.y)/font_size, 490./font_size-STRHEIGHT(1.0));
     float col = 0.;       
-	col += char(ch_P,uv);
-    col += char(ch_L,uv);
-    col += char(ch_A,uv);
-    col += char(ch_Y,uv);
-    col += char(ch_E,uv);
-    col += char(ch_R,uv);
-    col += char(ch_spc,uv);
-    col += char(ch_1,uv);
+	col += drawChar(ch_P,uv);
+    col += drawChar(ch_L,uv);
+    col += drawChar(ch_A,uv);
+    col += drawChar(ch_Y,uv);
+    col += drawChar(ch_E,uv);
+    col += drawChar(ch_R,uv);
+    col += drawChar(ch_spc,uv);
+    col += drawChar(ch_1,uv);
     
     font_size = 4.;
     print_pos = vec2(-490.*(iResolution.x/iResolution.y)/font_size, 400./font_size-STRHEIGHT(1.0));
-	col += char(ch_L,uv);
-    col += char(ch_i,uv);
-    col += char(ch_v,uv);
-    col += char(ch_e,uv);
-    col += char(ch_s,uv);
-    col += char(ch_col,uv);
-    col += char(ch_spc,uv);
-    col += char(get_digit(5 - int(wins.y)),uv);
+	col += drawChar(ch_L,uv);
+    col += drawChar(ch_i,uv);
+    col += drawChar(ch_v,uv);
+    col += drawChar(ch_e,uv);
+    col += drawChar(ch_s,uv);
+    col += drawChar(ch_col,uv);
+    col += drawChar(ch_spc,uv);
+    col += drawChar(get_digit(5 - int(wins.y)),uv);
     
     print_pos = vec2(-490.*(iResolution.x/iResolution.y)/font_size, 330./font_size-STRHEIGHT(1.0));
-	col += char(ch_T,uv);
-    col += char(ch_u,uv);
-    col += char(ch_r,uv);
-    col += char(ch_b,uv);
-    col += char(ch_o,uv);
-    col += char(ch_s,uv);
-    col += char(ch_col,uv);
-    col += char(ch_spc,uv);
-    col += char(get_digit(int(boosts.x)),uv);
+	col += drawChar(ch_T,uv);
+    col += drawChar(ch_u,uv);
+    col += drawChar(ch_r,uv);
+    col += drawChar(ch_b,uv);
+    col += drawChar(ch_o,uv);
+    col += drawChar(ch_s,uv);
+    col += drawChar(ch_col,uv);
+    col += drawChar(ch_spc,uv);
+    col += drawChar(get_digit(int(boosts.x)),uv);
     
     if (wins.x > 4.5)
     {
         font_size = 8.;
         print_pos = vec2(-460.*(iResolution.x/iResolution.y)/font_size + STRWIDTH(1.0)/2., 0.);
-        col += char(ch_Y,uv);
-        col += char(ch_O,uv);
-        col += char(ch_U,uv);
+        col += drawChar(ch_Y,uv);
+        col += drawChar(ch_O,uv);
+        col += drawChar(ch_U,uv);
         print_pos = vec2(-460.*(iResolution.x/iResolution.y)/font_size, -STRHEIGHT(1.0));
-        col += char(ch_W,uv);
-        col += char(ch_I,uv);
-        col += char(ch_N,uv);
-        col += char(ch_exc,uv);
+        col += drawChar(ch_W,uv);
+        col += drawChar(ch_I,uv);
+        col += drawChar(ch_N,uv);
+        col += drawChar(ch_exc,uv);
     }
     else if (wins.y > 4.5)
     {
         font_size = 8.;
         print_pos = vec2(-460.*(iResolution.x/iResolution.y)/font_size + STRWIDTH(1.0)/2., 0.);
-        col += char(ch_Y,uv);
-        col += char(ch_O,uv);
-        col += char(ch_U,uv);
+        col += drawChar(ch_Y,uv);
+        col += drawChar(ch_O,uv);
+        col += drawChar(ch_U,uv);
         print_pos = vec2(-460.*(iResolution.x/iResolution.y)/font_size, -STRHEIGHT(1.0));
-        col += char(ch_L,uv);
-        col += char(ch_O,uv);
-        col += char(ch_S,uv);
-        col += char(ch_E,uv);
+        col += drawChar(ch_L,uv);
+        col += drawChar(ch_O,uv);
+        col += drawChar(ch_S,uv);
+        col += drawChar(ch_E,uv);
     }
     
     vec3 p1c = p1Color*col;
@@ -310,71 +310,71 @@ vec3 gameHud(vec2 uv, float playerVsGpu, vec2 wins, vec2 boosts)
     if (playerVsGpu > 0.5)
     {
         print_pos = vec2(490.*(iResolution.x/iResolution.y)/font_size - STRWIDTH(3.0), 490./font_size-STRHEIGHT(1.0));
-        col = char(ch_G,uv);
-        col += char(ch_P,uv);
-        col += char(ch_U,uv);
+        col = drawChar(ch_G,uv);
+        col += drawChar(ch_P,uv);
+        col += drawChar(ch_U,uv);
     }
     else
     {
         print_pos = vec2(490.*(iResolution.x/iResolution.y)/font_size - STRWIDTH(8.0), 490./font_size-STRHEIGHT(1.0));
-        col = char(ch_P,uv);
-        col += char(ch_L,uv);
-        col += char(ch_A,uv);
-        col += char(ch_Y,uv);
-        col += char(ch_E,uv);
-        col += char(ch_R,uv);
-        col += char(ch_spc,uv);
-        col += char(ch_2,uv);
+        col = drawChar(ch_P,uv);
+        col += drawChar(ch_L,uv);
+        col += drawChar(ch_A,uv);
+        col += drawChar(ch_Y,uv);
+        col += drawChar(ch_E,uv);
+        col += drawChar(ch_R,uv);
+        col += drawChar(ch_spc,uv);
+        col += drawChar(ch_2,uv);
 
         if (wins.y > 4.5)
         {
             font_size = 8.;
             print_pos = vec2(460.*(iResolution.x/iResolution.y)/font_size - STRWIDTH(3.5), 0.);
-            col += char(ch_Y,uv);
-            col += char(ch_O,uv);
-            col += char(ch_U,uv);
+            col += drawChar(ch_Y,uv);
+            col += drawChar(ch_O,uv);
+            col += drawChar(ch_U,uv);
             print_pos = vec2(460.*(iResolution.x/iResolution.y)/font_size - STRWIDTH(4.0), -STRHEIGHT(1.0));
-            col += char(ch_W,uv);
-            col += char(ch_I,uv);
-            col += char(ch_N,uv);
-            col += char(ch_exc,uv);
+            col += drawChar(ch_W,uv);
+            col += drawChar(ch_I,uv);
+            col += drawChar(ch_N,uv);
+            col += drawChar(ch_exc,uv);
         }
         else if (wins.x > 4.5)
         {
             font_size = 8.;
             print_pos = vec2(460.*(iResolution.x/iResolution.y)/font_size - STRWIDTH(3.5), 0.);
-            col += char(ch_Y,uv);
-            col += char(ch_O,uv);
-            col += char(ch_U,uv);
+            col += drawChar(ch_Y,uv);
+            col += drawChar(ch_O,uv);
+            col += drawChar(ch_U,uv);
             print_pos = vec2(460.*(iResolution.x/iResolution.y)/font_size - STRWIDTH(4.0), -STRHEIGHT(1.0));
-            col += char(ch_L,uv);
-            col += char(ch_O,uv);
-            col += char(ch_S,uv);
-            col += char(ch_E,uv);
+            col += drawChar(ch_L,uv);
+            col += drawChar(ch_O,uv);
+            col += drawChar(ch_S,uv);
+            col += drawChar(ch_E,uv);
     	}
     }
     
     font_size = 4.;
     print_pos = vec2(490.*(iResolution.x/iResolution.y)/font_size - STRWIDTH(9.0), 330./font_size-STRHEIGHT(1.0));
-    col += char(ch_T,uv);
-    col += char(ch_u,uv);
-    col += char(ch_r,uv);
-    col += char(ch_b,uv);
-    col += char(ch_o,uv);
-    col += char(ch_s,uv);
-    col += char(ch_col,uv);
-    col += char(ch_spc,uv);
-    col += char(get_digit(int(boosts.y)),uv);
+    col += drawChar(ch_T,uv);
+    col += drawChar(ch_u,uv);
+    col += drawChar(ch_r,uv);
+    col += drawChar(ch_b,uv);
+    col += drawChar(ch_o,uv);
+    col += drawChar(ch_s,uv);
+    col += drawChar(ch_col,uv);
+    col += drawChar(ch_spc,uv);
+    col += drawChar(get_digit(int(boosts.y)),uv);
     
     print_pos = vec2(490.*(iResolution.x/iResolution.y)/font_size - STRWIDTH(8.0), 400./font_size-STRHEIGHT(1.0));
-	col += char(ch_L,uv);
-    col += char(ch_i,uv);
-    col += char(ch_v,uv);
-    col += char(ch_e,uv);
-    col += char(ch_s,uv);
-    col += char(ch_col,uv);
-    col += char(ch_spc,uv);
-    col += char(get_digit(5 - int(wins.x)),uv);
+	col += drawChar(ch_L,uv);
+    col += drawChar(ch_i,uv);
+    col += drawChar(ch_v,uv);
+    col += drawChar(ch_e,uv);
+    col += drawChar(ch_s,uv);
+    col += drawChar(ch_col,uv);
+    col += drawChar(ch_spc,uv);
+    col += drawChar(get_digit(5 - int(wins.x)),uv);
     
     
                 
@@ -388,30 +388,30 @@ vec3 showContinue(vec2 uv)
     float col = 0.;       
 
     print_pos = vec2(480.*(iResolution.x/iResolution.y)/font_size - STRWIDTH(11.0), -490./font_size+STRHEIGHT(2.0));
-    col += char(ch_P,uv);
-    col += char(ch_r,uv);
-    col += char(ch_e,uv);
-    col += char(ch_s,uv);
-    col += char(ch_s,uv);
-    col += char(ch_spc,uv);
-    col += char(ch_E,uv);
-    col += char(ch_N,uv);
-    col += char(ch_T,uv);
-    col += char(ch_E,uv);
-    col += char(ch_R,uv);
+    col += drawChar(ch_P,uv);
+    col += drawChar(ch_r,uv);
+    col += drawChar(ch_e,uv);
+    col += drawChar(ch_s,uv);
+    col += drawChar(ch_s,uv);
+    col += drawChar(ch_spc,uv);
+    col += drawChar(ch_E,uv);
+    col += drawChar(ch_N,uv);
+    col += drawChar(ch_T,uv);
+    col += drawChar(ch_E,uv);
+    col += drawChar(ch_R,uv);
     
     print_pos = vec2(480.*(iResolution.x/iResolution.y)/font_size - STRWIDTH(11.0), -490./font_size+STRHEIGHT(1.0));
-    col += char(ch_t,uv);
-    col += char(ch_o,uv);
-    col += char(ch_spc,uv);
-    col += char(ch_c,uv);
-    col += char(ch_o,uv);
-    col += char(ch_n,uv);
-    col += char(ch_t,uv);
-    col += char(ch_i,uv);
-    col += char(ch_n,uv);
-    col += char(ch_u,uv);
-    col += char(ch_e,uv);
+    col += drawChar(ch_t,uv);
+    col += drawChar(ch_o,uv);
+    col += drawChar(ch_spc,uv);
+    col += drawChar(ch_c,uv);
+    col += drawChar(ch_o,uv);
+    col += drawChar(ch_n,uv);
+    col += drawChar(ch_t,uv);
+    col += drawChar(ch_i,uv);
+    col += drawChar(ch_n,uv);
+    col += drawChar(ch_u,uv);
+    col += drawChar(ch_e,uv);
     return vec3(col);
 }
 
