@@ -374,6 +374,8 @@ void ShaderDockApp::process_event(const SDL_Event& event)
             if (event.button.button == SDL_BUTTON_LEFT) {
                 update_mouse_position(event.button.x, event.button.y);
                 mouse_button_down_ = true;
+                mouse_tap_pending_ = false;
+                mouse_dragged_ = false;
                 mouse_click_x_ = mouse_current_x_;
                 mouse_click_y_ = mouse_current_y_;
             }
@@ -382,6 +384,10 @@ void ShaderDockApp::process_event(const SDL_Event& event)
             if (event.button.button == SDL_BUTTON_LEFT) {
                 update_mouse_position(event.button.x, event.button.y);
                 mouse_button_down_ = false;
+                mouse_release_x_ = mouse_current_x_;
+                mouse_release_y_ = mouse_current_y_;
+                mouse_tap_pending_ = !mouse_dragged_;
+                mouse_dragged_ = false;
             }
             break;
         case SDL_MOUSEMOTION:
@@ -456,17 +462,45 @@ void ShaderDockApp::update_mouse_position(int window_x, int window_y)
     mouse_current_x_ = pixel_x;
     mouse_current_y_ = static_cast<float>(drawable_height_) - pixel_y - 1.0F;
     mouse_current_y_ = std::clamp(mouse_current_y_, 0.0F, static_cast<float>(drawable_height_));
+
+    if (mouse_button_down_ && !mouse_dragged_) {
+        constexpr float drag_threshold = 1.0F;
+        if (std::abs(mouse_current_x_ - mouse_click_x_) > drag_threshold ||
+            std::abs(mouse_current_y_ - mouse_click_y_) > drag_threshold) {
+            mouse_dragged_ = true;
+        }
+    }
+
+    if (!mouse_button_down_ && !mouse_tap_pending_) {
+        mouse_release_x_ = mouse_current_x_;
+        mouse_release_y_ = mouse_current_y_;
+    }
 }
 
-std::array<float, 4> ShaderDockApp::build_mouse_uniform() const
+std::array<float, 4> ShaderDockApp::build_mouse_uniform()
 {
-    std::array<float, 4> mouse{0.0F, 0.0F, mouse_click_x_, mouse_click_y_};
-    mouse[2] = mouse_click_x_;
-    mouse[3] = mouse_click_y_;
+    std::array<float, 4> mouse{0.0F, 0.0F, 0.0F, 0.0F};
+
     if (mouse_button_down_) {
         mouse[0] = mouse_current_x_;
         mouse[1] = mouse_current_y_;
+        mouse[2] = mouse_click_x_;
+        mouse[3] = -mouse_click_y_;
+
+        // Track the most recent position so we can reference it after release.
+        mouse_release_x_ = mouse_current_x_;
+        mouse_release_y_ = mouse_current_y_;
+    } else {
+        mouse[0] = -mouse_release_x_;
+        mouse[1] = -mouse_release_y_;
+        mouse[2] = -mouse_release_x_;
+        mouse[3] = mouse_tap_pending_ ? mouse_release_y_ : -mouse_release_y_;
+
+        if (mouse_tap_pending_) {
+            mouse_tap_pending_ = false;
+        }
     }
+
     return mouse;
 }
 

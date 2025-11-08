@@ -41,7 +41,7 @@ private:
     void update_viewport();
     void render_frame(float elapsed_seconds, float delta_seconds);
     void update_mouse_position(int window_x, int window_y);
-    std::array<float, 4> build_mouse_uniform() const;
+    std::array<float, 4> build_mouse_uniform();
 
     AppOptions options_;
     AppConfig config_;
@@ -74,6 +74,10 @@ private:
     float mouse_current_y_ = 0.0F;
     float mouse_click_x_ = 0.0F;
     float mouse_click_y_ = 0.0F;
+    float mouse_release_x_ = 0.0F;
+    float mouse_release_y_ = 0.0F;
+    bool mouse_tap_pending_ = false;
+    bool mouse_dragged_ = false;
 };
 
 } // namespace shaderdock::app
