@@ -1,0 +1,92 @@
+{
+  "ver": "0.1",
+  "info": {
+    "id": "MddGzf",
+    "name": "Bricks Game",
+    "username": "iq",
+    "description": "Use arrow keys or the mouse to move the paddle. Use space to restart. This shader uses the new Multipass system",
+    "tags": [
+      "procedural",
+      "2d",
+      "game",
+      "interactive",
+      "bricks",
+      "multipass",
+      "arkanoid"
+    ],
+    "likes": 502,
+    "published": 3
+  },
+  "renderpass": [
+    {
+      "name": "Image",
+      "type": "image",
+      "source": "image.glsl",
+      "inputs": [
+        {
+          "id": "4dXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "XdX3RN",
+          "type": "musicstream",
+          "channel": 1,
+          "filepath": "https://soundcloud.com/algoritmos666/tron-legacy-soundtrack-ost-03",
+          "sampler": {
+            "filter": "linear",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    },
+    {
+      "name": "Buffer A",
+      "type": "buffer",
+      "source": "buffer_a.glsl",
+      "inputs": [
+        {
+          "id": "4dXGRr",
+          "type": "keyboard",
+          "channel": 1,
+          "filepath": "/presets/tex00.jpg",
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "4dXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    }
+  ]
+}
