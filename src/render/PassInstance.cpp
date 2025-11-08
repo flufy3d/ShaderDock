@@ -3,6 +3,7 @@
 #include <SDL.h>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cstdio>
 #include <sstream>
@@ -75,6 +76,28 @@ std::string NormalizeMacroSuffix(std::string_view name)
         result.pop_back();
     }
     return result;
+}
+
+std::array<resources::PassInputType, 4> BuildChannelTypes(const resources::RenderPass& pass)
+{
+    std::array<resources::PassInputType, 4> channel_types{};
+    channel_types.fill(resources::PassInputType::kTexture);
+
+    for (const auto& input : pass.inputs) {
+        if (input.channel >= 0 && input.channel < 4) {
+            channel_types[static_cast<std::size_t>(input.channel)] = input.type;
+        }
+    }
+
+    return channel_types;
+}
+
+const char* SamplerTypeForChannel(resources::PassInputType input_type)
+{
+    if (input_type == resources::PassInputType::kCubemap) {
+        return "samplerCube";
+    }
+    return "sampler2D";
 }
 
 } // namespace
@@ -229,6 +252,8 @@ std::string PassInstance::load_pass_source(const resources::RenderPass& pass) co
 std::string PassInstance::build_fragment_source(const resources::RenderPass& pass, std::string_view raw, const std::string& common_source) const
 {
     std::ostringstream oss;
+    const auto channel_types = BuildChannelTypes(pass);
+
     oss << "#version 320 es\n";
     oss << "precision highp float;\n";
     oss << "layout(location = 0) out vec4 shaderdock_FragColor;\n";
@@ -261,11 +286,12 @@ uniform vec4 iMouse;
 uniform vec4 iDate;
 uniform float iChannelTime[4];
 uniform vec3 iChannelResolution[4];
-uniform sampler2D iChannel0;
-uniform sampler2D iChannel1;
-uniform sampler2D iChannel2;
-uniform sampler2D iChannel3;
 )";
+
+    for (int channel = 0; channel < 4; ++channel) {
+        oss << "uniform " << SamplerTypeForChannel(channel_types[static_cast<std::size_t>(channel)]) << " iChannel"
+            << channel << ";\n";
+    }
 
     if (!common_source.empty()) {
         oss << "\n" << common_source << "\n";
