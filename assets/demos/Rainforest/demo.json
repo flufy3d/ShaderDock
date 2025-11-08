@@ -1,0 +1,61 @@
+{
+  "ver": "0.1",
+  "info": {
+    "id": "4ttSWf",
+    "name": "Rainforest",
+    "username": "iq",
+    "description": "Another terrain, with cheap trees made of ellipsoids and noise. It computes analytic normals for the terrain and clouds. The art composed to camera as usual. Making-of Tutorial: [url]https://www.youtube.com/watch?v=BFld4EBO2RE[/url]",
+    "tags": [
+      "procedural",
+      "3d",
+      "raymarching",
+      "reprojection"
+    ],
+    "likes": 1354,
+    "published": 3
+  },
+  "renderpass": [
+    {
+      "name": "Image",
+      "type": "image",
+      "source": "image.glsl",
+      "inputs": [
+        {
+          "id": "4dXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "linear",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    },
+    {
+      "name": "Buffer A",
+      "type": "buffer",
+      "source": "buffer_a.glsl",
+      "inputs": [
+        {
+          "id": "4dXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "linear",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    }
+  ]
+}

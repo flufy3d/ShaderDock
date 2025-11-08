@@ -1,0 +1,44 @@
+{
+  "ver": "0.1",
+  "info": {
+    "id": "NslGRN",
+    "name": "Cube lines",
+    "username": "morimea",
+    "description": "Art shader.\n\nCineshader support [url]https://cineshader.com/view/NslGRN[/url]\n\nThis shader as Desktop wallpaper in linux:\n[b]for KDE[/b] [url]https://store.kde.org/p/1505365[/url]\n[b]for Gnome[/b] [url]https://www.gnome-look.org/p/1505898/[/url]",
+    "tags": [
+      "3d",
+      "reflection",
+      "refraction",
+      "intersection",
+      "art",
+      "reflect",
+      "mirrors",
+      "cineshader"
+    ],
+    "likes": 881,
+    "published": 3
+  },
+  "renderpass": [
+    {
+      "name": "Image",
+      "type": "image",
+      "source": "image.glsl",
+      "inputs": [
+        {
+          "id": "4dfGRn",
+          "type": "texture",
+          "channel": 0,
+          "filepath": "/textures/8de3a3924cb95bd0e95a443fff0326c869f9d4979cd1d5b6e94e2a01f5be53e9.jpg",
+          "sampler": {
+            "filter": "mipmap",
+            "wrap": "repeat",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    }
+  ]
+}

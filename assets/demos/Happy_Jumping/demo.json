@@ -1,0 +1,26 @@
+{
+  "ver": "0.1",
+  "info": {
+    "id": "3lsSzf",
+    "name": "Happy Jumping",
+    "username": "iq",
+    "description": "A happy and blobby creature jumping. Making of and related math/shader/art explanations (6 hours long): [url=https://www.youtube.com/watch?v=Cfe5UQ-1L9Q&list=PL0EpikNmjs2CYUMePMGh3IjjP4tQlYqji]https://www.youtube.com/watch?v=Cfe5UQ-1L9Q[/url]. ",
+    "tags": [
+      "procedural",
+      "3d",
+      "raymarching",
+      "sdf",
+      "animation"
+    ],
+    "likes": 896,
+    "published": 3
+  },
+  "renderpass": [
+    {
+      "name": "Image",
+      "type": "image",
+      "source": "image.glsl",
+      "inputs": []
+    }
+  ]
+}
