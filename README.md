@@ -114,8 +114,8 @@ uniform vec4      iDate;                  // (year, month, day, seconds)
 ShaderDock currently supports the following `demo.json` input types:
 
 - `texture` – Binds a regular 2D texture using the provided sampler settings.
-- `cubemap` – Binds a cubemap texture and switches to `samplerCube`.
-- `buffer` – Binds the output of another render pass (ping-pong FBO).
+- `cubemap` – Binds a cubemap texture.
+- `buffer` – Binds the output of another render pass.
 
 ### Performance Macros
 
