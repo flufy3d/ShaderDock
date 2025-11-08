@@ -58,10 +58,10 @@ RenderPassType ParseRenderPassType(const std::string& value)
     return RenderPassType::kUnknown;
 }
 
-PassInputType ParsePassInputType(const std::string& value)
+std::optional<PassInputType> ParsePassInputType(const std::string& value)
 {
     const std::string lowered = ToLowerCopy(value);
-    if (lowered == "texture") {
+    if (lowered.empty() || lowered == "texture") {
         return PassInputType::kTexture;
     }
     if (lowered == "cubemap") {
@@ -70,7 +70,7 @@ PassInputType ParsePassInputType(const std::string& value)
     if (lowered == "buffer") {
         return PassInputType::kBuffer;
     }
-    return PassInputType::kTexture;
+    return std::nullopt;
 }
 
 SamplerFilter ParseSamplerFilter(const Json::Value& value)
@@ -286,7 +286,18 @@ std::optional<DemoManifest> LoadDemoManifest(const std::filesystem::path& manife
 
                 PassInput input;
                 input.id = input_json.get("id", "").asString();
-                input.type = ParsePassInputType(input_json.get("type", "").asString());
+
+                const std::string type_value = input_json.get("type", "").asString();
+                const auto parsed_type = ParsePassInputType(type_value);
+                if (!parsed_type) {
+                    SDL_Log(
+                        "Manifest input '%s' in pass '%s' uses unsupported type '%s'; skipping (channel will stay unbound).",
+                        input.id.c_str(),
+                        pass.name.c_str(),
+                        type_value.c_str());
+                    continue;
+                }
+                input.type = *parsed_type;
                 input.channel = input_json.get("channel", 0).asInt();
                 input.published = input_json.get("published", 0).asInt() != 0;
                 input.filepath = input_json.get("filepath", "").asString();

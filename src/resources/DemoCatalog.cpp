@@ -5,9 +5,12 @@
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
+
+#include <json/json.h>
 
 #include "resources/AssetIO.hpp"
 #include "resources/DemoManifest.hpp"
@@ -38,6 +41,40 @@ std::string DisplayLabel(const DemoEntry& entry)
         return entry.display_name;
     }
     return entry.folder_name;
+}
+
+std::string ReadManifestDisplayName(const std::filesystem::path& manifest_path)
+{
+    std::error_code ec;
+    if (!std::filesystem::exists(manifest_path, ec) || ec) {
+        return {};
+    }
+
+    std::string raw = ReadTextFile(manifest_path.string());
+    if (raw.empty()) {
+        return {};
+    }
+
+    Json::CharReaderBuilder builder;
+    builder["collectComments"] = false;
+
+    Json::Value root;
+    std::string errs;
+    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+    if (!reader->parse(raw.data(), raw.data() + raw.size(), &root, &errs)) {
+        return {};
+    }
+
+    if (!root.isObject()) {
+        return {};
+    }
+
+    const Json::Value& info = root["info"];
+    if (!info.isObject()) {
+        return {};
+    }
+
+    return info.get("name", "").asString();
 }
 
 } // namespace
@@ -71,9 +108,7 @@ std::vector<DemoEntry> EnumerateAvailableDemos()
         demo.folder_name = entry.path().filename().string();
         demo.manifest_path = manifest;
 
-        if (auto manifest_data = LoadDemoManifest(manifest); manifest_data) {
-            demo.display_name = manifest_data->info.name;
-        }
+        demo.display_name = ReadManifestDisplayName(manifest);
 
         demos.emplace_back(std::move(demo));
     }

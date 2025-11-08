@@ -109,6 +109,14 @@ uniform vec4      iDate;                  // (year, month, day, seconds)
 
 `iChannelX` automatically switches between 2D and cubemap samplers and binds buffers/FBOs or textures based on `demo.json`.
 
+### Supported Channel Types
+
+ShaderDock currently supports the following `demo.json` input types:
+
+- `texture` – Binds a regular 2D texture using the provided sampler settings.
+- `cubemap` – Binds a cubemap texture and switches to `samplerCube`.
+- `buffer` – Binds the output of another render pass (ping-pong FBO).
+
 ### Performance Macros
 
 Every fragment shader also receives `#define HW_PERFORMANCE <0|1>` at the top of its generated source.  
