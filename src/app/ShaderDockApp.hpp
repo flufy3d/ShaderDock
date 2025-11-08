@@ -62,6 +62,7 @@ private:
     render::FullscreenTriangle full_screen_triangle_;
     render::RenderPipeline pipeline_;
     render::FrameUniforms frame_uniforms_;
+    int hardware_performance_level_ = 0;
 
     std::optional<resources::DemoManifest> demo_manifest_;
     std::filesystem::path selected_manifest_path_;

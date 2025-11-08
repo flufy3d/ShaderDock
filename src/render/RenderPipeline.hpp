@@ -25,7 +25,8 @@ public:
     bool initialize(
         const resources::DemoManifest& manifest,
         const std::unordered_map<std::string, std::shared_ptr<resources::TextureHandle>>& texture_bindings,
-        FullscreenTriangle* fullscreen_triangle);
+        FullscreenTriangle* fullscreen_triangle,
+        int hardware_performance_level);
 
     void shutdown();
 
@@ -44,6 +45,7 @@ private:
     std::string common_source_;
     std::vector<PassInstance> execution_order_;
     std::unordered_map<std::string, BufferSurface> buffer_surfaces_;
+    int hardware_performance_level_ = 0;
 };
 
 } // namespace shaderdock::render

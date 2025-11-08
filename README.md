@@ -109,6 +109,12 @@ uniform vec4      iDate;                  // (year, month, day, seconds)
 
 `iChannelX` automatically switches between 2D and cubemap samplers and binds buffers/FBOs or textures based on `demo.json`.
 
+### Performance Macros
+
+Every fragment shader also receives `#define HW_PERFORMANCE <0|1>` at the top of its generated source.  
+ShaderDock inspects the reported GL vendor/renderer: desktop-class RTX/GTX/Radeon RX/Arc cards get `1` (high), while everything else—including mobile GPUs and most integrated parts—defaults to `0`.  
+Use this macro to branch between reduced/expensive paths in ported ShaderToy code (many originals already check it).
+
 ---
 
 ## ⚠️ Disclaimer

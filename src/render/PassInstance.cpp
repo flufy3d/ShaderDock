@@ -108,7 +108,8 @@ bool PassInstance::initialize(
     BufferSurface* target_buffer,
     const std::unordered_map<std::string, BufferSurface*>& buffer_sources,
     const std::unordered_map<std::string, std::shared_ptr<resources::TextureHandle>>& texture_bindings,
-    const std::string& common_source)
+    const std::string& common_source,
+    int hardware_performance_level)
 {
     manifest_ = &pass;
     uses_history_ = uses_history;
@@ -119,7 +120,8 @@ bool PassInstance::initialize(
         return false;
     }
 
-    const std::string fragment_source = build_fragment_source(pass, raw_source, common_source);
+    const std::string fragment_source =
+        build_fragment_source(pass, raw_source, common_source, hardware_performance_level);
     if (!program_.compile_from_source(kFullscreenVertexShader, fragment_source.c_str())) {
         SDL_Log("PassInstance: failed to compile shader for %s.", pass.name.c_str());
         return false;
@@ -249,7 +251,11 @@ std::string PassInstance::load_pass_source(const resources::RenderPass& pass) co
     return source;
 }
 
-std::string PassInstance::build_fragment_source(const resources::RenderPass& pass, std::string_view raw, const std::string& common_source) const
+std::string PassInstance::build_fragment_source(
+    const resources::RenderPass& pass,
+    std::string_view raw,
+    const std::string& common_source,
+    int hardware_performance_level) const
 {
     std::ostringstream oss;
     const auto channel_types = BuildChannelTypes(pass);
@@ -257,6 +263,7 @@ std::string PassInstance::build_fragment_source(const resources::RenderPass& pas
     oss << "#version 320 es\n";
     oss << "precision highp float;\n";
     oss << "layout(location = 0) out vec4 shaderdock_FragColor;\n";
+    oss << "#define HW_PERFORMANCE " << hardware_performance_level << '\n';
 
     oss << "#define SHADERDOCK_PASS 1\n";
     if (pass.type == resources::RenderPassType::kImage) {

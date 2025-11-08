@@ -2,6 +2,9 @@
 
 #include <SDL.h>
 
+#include <cstring>
+#include <string_view>
+
 #include <glad/glad.h>
 
 namespace shaderdock::render {
@@ -31,6 +34,46 @@ void LogGLInfo()
     if (version != nullptr) {
         SDL_Log("GL_VERSION: %s", version);
     }
+}
+
+namespace {
+
+bool ContainsToken(const char* text, std::string_view token)
+{
+    if (text == nullptr || token.empty()) {
+        return false;
+    }
+    return std::strstr(text, token.data()) != nullptr;
+}
+
+} // namespace
+
+int GuessHardwarePerformanceLevel()
+{
+    const char* vendor = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
+    const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+
+    if (renderer == nullptr || vendor == nullptr) {
+        SDL_Log("Hardware performance guess: missing GL vendor/renderer info, defaulting to low.");
+        return 0;
+    }
+
+    if (ContainsToken(renderer, "RTX") || ContainsToken(renderer, "GTX") ||
+        ContainsToken(renderer, "Radeon RX") || ContainsToken(renderer, "Arc")) {
+        return 1;
+    }
+
+    if (ContainsToken(renderer, "Adreno") || ContainsToken(renderer, "Mali") ||
+        ContainsToken(renderer, "PowerVR") || ContainsToken(renderer, "Apple")) {
+        return 0;
+    }
+
+    if (ContainsToken(renderer, "Intel") || ContainsToken(renderer, "UHD") ||
+        ContainsToken(renderer, "Iris") || ContainsToken(vendor, "Intel")) {
+        return 0;
+    }
+
+    return 0;
 }
 
 } // namespace shaderdock::render

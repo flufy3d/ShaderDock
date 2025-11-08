@@ -31,7 +31,8 @@ public:
         BufferSurface* target_buffer,
         const std::unordered_map<std::string, BufferSurface*>& buffer_sources,
         const std::unordered_map<std::string, std::shared_ptr<resources::TextureHandle>>& texture_bindings,
-        const std::string& common_source);
+        const std::string& common_source,
+        int hardware_performance_level);
 
     const resources::RenderPass* manifest() const { return manifest_; }
     BufferSurface* target_buffer() const { return target_buffer_; }
@@ -63,7 +64,11 @@ private:
     };
 
     std::string load_pass_source(const resources::RenderPass& pass) const;
-    std::string build_fragment_source(const resources::RenderPass& pass, std::string_view raw, const std::string& common_source) const;
+    std::string build_fragment_source(
+        const resources::RenderPass& pass,
+        std::string_view raw,
+        const std::string& common_source,
+        int hardware_performance_level) const;
     void cache_uniform_locations();
     bool build_input_bindings(
         const resources::RenderPass& pass,

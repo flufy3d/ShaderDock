@@ -89,6 +89,11 @@ bool ShaderDockApp::initialize()
     }
 
     render::LogGLInfo();
+    hardware_performance_level_ = render::GuessHardwarePerformanceLevel();
+    SDL_Log(
+        "Hardware performance level detected: %s (%d).",
+        hardware_performance_level_ > 0 ? "high" : "low",
+        hardware_performance_level_);
 
     if (!full_screen_triangle_.initialize()) {
         SDL_Log("Failed to create fullscreen triangle geometry.");
@@ -303,7 +308,11 @@ bool ShaderDockApp::build_pipeline()
         return false;
     }
 
-    if (!pipeline_.initialize(*demo_manifest_, texture_bindings_, &full_screen_triangle_)) {
+    if (!pipeline_.initialize(
+            *demo_manifest_,
+            texture_bindings_,
+            &full_screen_triangle_,
+            hardware_performance_level_)) {
         SDL_Log("Failed to build render pipeline.");
         return false;
     }

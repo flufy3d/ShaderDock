@@ -45,7 +45,8 @@ RenderPipeline::~RenderPipeline()
 bool RenderPipeline::initialize(
     const resources::DemoManifest& manifest,
     const std::unordered_map<std::string, std::shared_ptr<resources::TextureHandle>>& texture_bindings,
-    FullscreenTriangle* fullscreen_triangle)
+    FullscreenTriangle* fullscreen_triangle,
+    int hardware_performance_level)
 {
     shutdown();
 
@@ -54,6 +55,7 @@ bool RenderPipeline::initialize(
         SDL_Log("RenderPipeline: fullscreen triangle is null.");
         return false;
     }
+    hardware_performance_level_ = hardware_performance_level;
 
     if (!build_common_source(manifest)) {
         return false;
@@ -70,6 +72,7 @@ void RenderPipeline::shutdown()
 {
     execution_order_.clear();
     fullscreen_triangle_ = nullptr;
+    hardware_performance_level_ = 0;
 
     for (auto& surface_entry : buffer_surfaces_) {
         surface_entry.second.reset();
@@ -205,7 +208,8 @@ bool RenderPipeline::prepare_passes(
                 target_surface,
                 id_to_surface,
                 texture_bindings,
-                common_source_)) {
+                common_source_,
+                hardware_performance_level_)) {
             return false;
         }
 
