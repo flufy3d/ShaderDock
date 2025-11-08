@@ -480,10 +480,6 @@ void ShaderDockApp::update_mouse_position(int window_x, int window_y)
         }
     }
 
-    if (!mouse_button_down_ && !mouse_tap_pending_) {
-        mouse_release_x_ = mouse_current_x_;
-        mouse_release_y_ = mouse_current_y_;
-    }
 }
 
 std::array<float, 4> ShaderDockApp::build_mouse_uniform()
