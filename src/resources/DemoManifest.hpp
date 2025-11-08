@@ -19,6 +19,7 @@ enum class PassInputType {
     kTexture = 0,
     kCubemap,
     kBuffer,
+    kKeyboard,
 };
 
 enum class SamplerFilter {

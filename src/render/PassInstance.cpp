@@ -142,7 +142,10 @@ void PassInstance::bind_inputs() const
             continue;
         }
         glActiveTexture(GL_TEXTURE0 + binding.channel);
-        if (binding.type == resources::PassInputType::kTexture || binding.type == resources::PassInputType::kCubemap) {
+        if (
+            binding.type == resources::PassInputType::kTexture ||
+            binding.type == resources::PassInputType::kCubemap ||
+            binding.type == resources::PassInputType::kKeyboard) {
             if (binding.texture) {
                 glBindTexture(binding.texture->target(), binding.texture->id());
             }
@@ -162,7 +165,7 @@ void PassInstance::unbind_inputs() const
             continue;
         }
         glActiveTexture(GL_TEXTURE0 + binding.channel);
-        if (binding.type == resources::PassInputType::kTexture) {
+        if (binding.type == resources::PassInputType::kTexture || binding.type == resources::PassInputType::kKeyboard) {
             glBindTexture(GL_TEXTURE_2D, 0);
         } else if (binding.type == resources::PassInputType::kCubemap) {
             glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
@@ -187,7 +190,10 @@ void PassInstance::apply_uniforms(const FrameUniforms& frame, int target_width, 
         float height = 0.0F;
         float time_value = channel_time[static_cast<std::size_t>(binding.channel)];
 
-        if (binding.type == resources::PassInputType::kTexture || binding.type == resources::PassInputType::kCubemap) {
+        if (
+            binding.type == resources::PassInputType::kTexture ||
+            binding.type == resources::PassInputType::kCubemap ||
+            binding.type == resources::PassInputType::kKeyboard) {
             if (binding.texture) {
                 width = static_cast<float>(binding.texture->width());
                 height = static_cast<float>(binding.texture->height());
@@ -362,7 +368,10 @@ bool PassInstance::build_input_bindings(
         binding.channel = input.channel;
         binding.type = input.type;
 
-        if (input.type == resources::PassInputType::kTexture || input.type == resources::PassInputType::kCubemap) {
+        if (
+            input.type == resources::PassInputType::kTexture ||
+            input.type == resources::PassInputType::kCubemap ||
+            input.type == resources::PassInputType::kKeyboard) {
             auto tex_it = texture_bindings.find(input.id);
             if (tex_it == texture_bindings.end() || !tex_it->second) {
                 SDL_Log(

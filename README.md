@@ -19,6 +19,7 @@ just like ShaderToy, but fully offline and portable.
 - 🧱 **Modern graphics stack** – Powered by SDL2 + OpenGL ES 3.2  
 - ⚡ **Lightweight and fast** – Minimal dependencies, instant startup  
 - 💻 **Cross-platform** – Runs on Linux and Windows (planned macOS support)
+- 🕹 **Interactive input** – Mouse uniform + Keyboard texture emulation
 
 ---
 
@@ -116,6 +117,19 @@ ShaderDock currently supports the following `demo.json` input types:
 - `texture` – Binds a regular 2D texture using the provided sampler settings.
 - `cubemap` – Binds a cubemap texture.
 - `buffer` – Binds the output of another render pass.
+- `keyboard` – Binds a live 256×3, single-channel texture matching ShaderToy’s keyboard format.
+
+### Keyboard Input Texture (`type: "keyboard"`)
+
+When a manifest requests a `keyboard` input, ShaderDock synthesizes a 256×3 `GL_R8` texture aligned with ShaderToy’s layout:
+
+| Row | Meaning | Value range |
+| --- | --- | --- |
+| 0 | Current key state (`1 = pressed`, `0 = released`). | 0 or 1 |
+| 1 | Toggle bit (flips on every key press; useful for edge detection). | 0 or 1 |
+| 2 | Time since the last state change (press or release), normalized to `[0, 1]` over 0–600 s. | 0–1 |
+
+The X axis corresponds to DOM key codes (0–255). Demos typically query it via either `texelFetch(iChannelY, ivec2(keyCode, row), 0)` or `texture(iChannelY, vec2((keyCode+0.5)/256.0, rowCenter))`.
 
 ### Performance Macros
 

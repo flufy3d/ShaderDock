@@ -70,6 +70,9 @@ std::optional<PassInputType> ParsePassInputType(const std::string& value)
     if (lowered == "buffer") {
         return PassInputType::kBuffer;
     }
+    if (lowered == "keyboard") {
+        return PassInputType::kKeyboard;
+    }
     return std::nullopt;
 }
 
@@ -303,7 +306,10 @@ std::optional<DemoManifest> LoadDemoManifest(const std::filesystem::path& manife
                 input.filepath = input_json.get("filepath", "").asString();
                 input.sampler = ParseSamplerDesc(input_json["sampler"]);
 
-                if (input.type != PassInputType::kBuffer && !input.filepath.empty()) {
+                if (
+                    input.type != PassInputType::kBuffer &&
+                    input.type != PassInputType::kKeyboard &&
+                    !input.filepath.empty()) {
                     input.resolved_path = ResolveInputPath(manifest, input.filepath);
                     if (!input.resolved_path) {
                         SDL_Log("Failed to resolve resource path for input %s (%s).", input.id.c_str(), input.filepath.c_str());
@@ -348,6 +354,8 @@ std::string_view ToString(PassInputType type)
             return "cubemap";
         case PassInputType::kBuffer:
             return "buffer";
+        case PassInputType::kKeyboard:
+            return "keyboard";
         default:
             return "texture";
     }

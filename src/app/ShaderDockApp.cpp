@@ -56,6 +56,7 @@ std::array<float, 4> BuildDateUniform()
 ShaderDockApp::ShaderDockApp(AppOptions options)
     : options_(std::move(options))
 {
+    reset_keyboard_state();
 }
 
 bool ShaderDockApp::initialize()
@@ -263,6 +264,7 @@ bool ShaderDockApp::resolve_demo_selection()
 bool ShaderDockApp::preload_textures()
 {
     texture_bindings_.clear();
+    keyboard_binding_ids_.clear();
     if (!demo_manifest_) {
         SDL_Log("No demo manifest available, cannot preload textures.");
         return false;
@@ -270,6 +272,13 @@ bool ShaderDockApp::preload_textures()
 
     for (const auto& pass : demo_manifest_->passes) {
         for (const auto& input : pass.inputs) {
+            if (input.type == resources::PassInputType::kKeyboard) {
+                if (!input.id.empty()) {
+                    keyboard_binding_ids_.push_back(input.id);
+                }
+                continue;
+            }
+
             if (!input.resolved_path) {
                 continue;
             }
@@ -293,6 +302,18 @@ bool ShaderDockApp::preload_textures()
 
             texture_bindings_[input.id] = std::move(handle);
         }
+    }
+
+    keyboard_required_ = !keyboard_binding_ids_.empty();
+    if (keyboard_required_) {
+        reset_keyboard_state();
+        if (!ensure_keyboard_texture()) {
+            return false;
+        }
+        for (const auto& binding_id : keyboard_binding_ids_) {
+            texture_bindings_[binding_id] = keyboard_texture_;
+        }
+        keyboard_texture_dirty_ = true;
     }
 
     SDL_Log(
@@ -375,9 +396,13 @@ void ShaderDockApp::process_event(const SDL_Event& event)
             running_ = false;
             break;
         case SDL_KEYDOWN:
+            handle_key_event(event.key);
             if (event.key.keysym.sym == SDLK_ESCAPE) {
                 running_ = false;
             }
+            break;
+        case SDL_KEYUP:
+            handle_key_event(event.key);
             break;
         case SDL_MOUSEBUTTONDOWN:
             if (event.button.button == SDL_BUTTON_LEFT) {
@@ -440,6 +465,7 @@ void ShaderDockApp::render_frame(float elapsed_seconds, float delta_seconds)
     frame_uniforms_.mouse = build_mouse_uniform();
     frame_uniforms_.date = BuildDateUniform();
 
+    update_keyboard_texture(delta_seconds);
     pipeline_.render(frame_uniforms_, drawable_width_, drawable_height_);
 }
 
@@ -509,9 +535,254 @@ std::array<float, 4> ShaderDockApp::build_mouse_uniform()
     return mouse;
 }
 
+void ShaderDockApp::handle_key_event(const SDL_KeyboardEvent& key_event)
+{
+    if (!keyboard_required_) {
+        return;
+    }
+
+    const auto mapped_code = map_dom_keycode(key_event.keysym.sym);
+    if (!mapped_code) {
+        return;
+    }
+
+    const int key_index = *mapped_code;
+    if (key_index < 0 || key_index >= kKeyboardTextureWidth) {
+        return;
+    }
+
+    KeyState& state = keyboard_state_[static_cast<std::size_t>(key_index)];
+    if (key_event.type == SDL_KEYDOWN) {
+        if (key_event.repeat != 0) {
+            return;
+        }
+        if (!state.down) {
+            state.down = true;
+            state.toggle = !state.toggle;
+            state.seconds_since_change = 0.0F;
+            keyboard_texture_dirty_ = true;
+        }
+    } else if (key_event.type == SDL_KEYUP) {
+        if (!state.down) {
+            return;
+        }
+        state.down = false;
+        state.seconds_since_change = 0.0F;
+        keyboard_texture_dirty_ = true;
+    }
+}
+
+void ShaderDockApp::update_keyboard_texture(float delta_seconds)
+{
+    if (!keyboard_required_ || !keyboard_texture_) {
+        return;
+    }
+
+    const float clamped_delta = std::max(delta_seconds, 0.0F);
+    bool modified = keyboard_texture_dirty_;
+
+    for (int key = 0; key < kKeyboardTextureWidth; ++key) {
+        KeyState& state = keyboard_state_[static_cast<std::size_t>(key)];
+        state.seconds_since_change = std::min(state.seconds_since_change + clamped_delta, kKeyboardMaxTime);
+
+        const uint8_t down_value = state.down ? 255 : 0;
+        modified |= write_keyboard_pixel(0, key, down_value);
+
+        const uint8_t toggle_value = state.toggle ? 255 : 0;
+        modified |= write_keyboard_pixel(1, key, toggle_value);
+
+        const float normalized_time = state.seconds_since_change / kKeyboardMaxTime;
+        const uint8_t time_value = static_cast<uint8_t>(std::clamp(normalized_time, 0.0F, 1.0F) * 255.0F + 0.5F);
+        modified |= write_keyboard_pixel(2, key, time_value);
+    }
+
+    if (!modified) {
+        return;
+    }
+
+    glBindTexture(GL_TEXTURE_2D, keyboard_texture_->id());
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexSubImage2D(
+        GL_TEXTURE_2D,
+        0,
+        0,
+        0,
+        kKeyboardTextureWidth,
+        kKeyboardTextureHeight,
+        GL_RED,
+        GL_UNSIGNED_BYTE,
+        keyboard_pixels_.data());
+    glBindTexture(GL_TEXTURE_2D, 0);
+    keyboard_texture_dirty_ = false;
+}
+
+bool ShaderDockApp::ensure_keyboard_texture()
+{
+    if (keyboard_texture_) {
+        return true;
+    }
+
+    GLuint texture_id = 0;
+    glGenTextures(1, &texture_id);
+    if (texture_id == 0) {
+        SDL_Log("Failed to allocate keyboard texture.");
+        return false;
+    }
+
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_R8,
+        kKeyboardTextureWidth,
+        kKeyboardTextureHeight,
+        0,
+        GL_RED,
+        GL_UNSIGNED_BYTE,
+        keyboard_pixels_.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    keyboard_texture_ = std::make_shared<resources::TextureHandle>(
+        texture_id,
+        GL_TEXTURE_2D,
+        kKeyboardTextureWidth,
+        kKeyboardTextureHeight,
+        false);
+    return true;
+}
+
+void ShaderDockApp::reset_keyboard_state()
+{
+    for (auto& state : keyboard_state_) {
+        state.down = false;
+        state.toggle = false;
+        state.seconds_since_change = kKeyboardMaxTime;
+    }
+    keyboard_pixels_.fill(0);
+    keyboard_texture_dirty_ = true;
+}
+
+std::optional<int> ShaderDockApp::map_dom_keycode(SDL_Keycode key_code) const
+{
+    if (key_code >= SDLK_a && key_code <= SDLK_z) {
+        return 'A' + static_cast<int>(key_code - SDLK_a);
+    }
+    if (key_code >= SDLK_0 && key_code <= SDLK_9) {
+        return '0' + static_cast<int>(key_code - SDLK_0);
+    }
+    if (key_code >= SDLK_KP_0 && key_code <= SDLK_KP_9) {
+        return '0' + static_cast<int>(key_code - SDLK_KP_0);
+    }
+    if (key_code >= SDLK_F1 && key_code <= SDLK_F12) {
+        return 112 + static_cast<int>(key_code - SDLK_F1);
+    }
+
+    switch (key_code) {
+        case SDLK_SPACE:
+            return 32;
+        case SDLK_RETURN:
+        case SDLK_RETURN2:
+        case SDLK_KP_ENTER:
+            return 13;
+        case SDLK_ESCAPE:
+            return 27;
+        case SDLK_BACKSPACE:
+            return 8;
+        case SDLK_TAB:
+            return 9;
+        case SDLK_DELETE:
+            return 46;
+        case SDLK_INSERT:
+            return 45;
+        case SDLK_HOME:
+            return 36;
+        case SDLK_END:
+            return 35;
+        case SDLK_PAGEUP:
+            return 33;
+        case SDLK_PAGEDOWN:
+            return 34;
+        case SDLK_LEFT:
+            return 37;
+        case SDLK_UP:
+            return 38;
+        case SDLK_RIGHT:
+            return 39;
+        case SDLK_DOWN:
+            return 40;
+        case SDLK_LSHIFT:
+        case SDLK_RSHIFT:
+            return 16;
+        case SDLK_LCTRL:
+        case SDLK_RCTRL:
+            return 17;
+        case SDLK_LALT:
+        case SDLK_RALT:
+            return 18;
+        case SDLK_CAPSLOCK:
+            return 20;
+        case SDLK_LGUI:
+        case SDLK_RGUI:
+            return 91;
+        case SDLK_SEMICOLON:
+            return ';';
+        case SDLK_COMMA:
+            return ',';
+        case SDLK_PERIOD:
+            return '.';
+        case SDLK_SLASH:
+            return '/';
+        case SDLK_BACKSLASH:
+            return '\\';
+        case SDLK_LEFTBRACKET:
+            return '[';
+        case SDLK_RIGHTBRACKET:
+            return ']';
+        case SDLK_MINUS:
+            return '-';
+        case SDLK_EQUALS:
+            return '=';
+        case SDLK_QUOTE:
+            return '\'';
+        default:
+            break;
+    }
+
+    if (key_code >= 32 && key_code <= 126) {
+        unsigned char ch = static_cast<unsigned char>(key_code);
+        if (std::isalpha(ch)) {
+            ch = static_cast<unsigned char>(std::toupper(ch));
+        }
+        return static_cast<int>(ch);
+    }
+
+    return std::nullopt;
+}
+
+bool ShaderDockApp::write_keyboard_pixel(int row, int column, uint8_t value)
+{
+    const int index = row * kKeyboardTextureWidth + column;
+    uint8_t& current = keyboard_pixels_[static_cast<std::size_t>(index)];
+    if (current == value) {
+        return false;
+    }
+    current = value;
+    return true;
+}
+
 void ShaderDockApp::shutdown()
 {
     running_ = false;
+
+    keyboard_binding_ids_.clear();
+    keyboard_required_ = false;
+    keyboard_texture_.reset();
+    reset_keyboard_state();
 
     texture_bindings_.clear();
     texture_cache_.clear();

@@ -3,11 +3,13 @@
 #include <SDL.h>
 
 #include <array>
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "app/AppConfig.hpp"
 #include "render/FullscreenTriangle.hpp"
@@ -42,6 +44,12 @@ private:
     void render_frame(float elapsed_seconds, float delta_seconds);
     void update_mouse_position(int window_x, int window_y);
     std::array<float, 4> build_mouse_uniform();
+    void handle_key_event(const SDL_KeyboardEvent& key_event);
+    void update_keyboard_texture(float delta_seconds);
+    bool ensure_keyboard_texture();
+    void reset_keyboard_state();
+    std::optional<int> map_dom_keycode(SDL_Keycode key_code) const;
+    bool write_keyboard_pixel(int row, int column, uint8_t value);
 
     AppOptions options_;
     AppConfig config_;
@@ -79,6 +87,23 @@ private:
     float mouse_release_y_ = 0.0F;
     bool mouse_tap_pending_ = false;
     bool mouse_dragged_ = false;
+
+    struct KeyState {
+        bool down = false;
+        bool toggle = false;
+        float seconds_since_change = 0.0F;
+    };
+
+    static constexpr int kKeyboardTextureWidth = 256;
+    static constexpr int kKeyboardTextureHeight = 3;
+    static constexpr float kKeyboardMaxTime = 600.0F;
+
+    bool keyboard_required_ = false;
+    bool keyboard_texture_dirty_ = false;
+    std::shared_ptr<resources::TextureHandle> keyboard_texture_;
+    std::array<KeyState, kKeyboardTextureWidth> keyboard_state_{};
+    std::array<uint8_t, kKeyboardTextureWidth * kKeyboardTextureHeight> keyboard_pixels_{};
+    std::vector<std::string> keyboard_binding_ids_;
 };
 
 } // namespace shaderdock::app
