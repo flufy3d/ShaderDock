@@ -496,8 +496,8 @@ std::array<float, 4> ShaderDockApp::build_mouse_uniform()
         mouse_release_x_ = mouse_current_x_;
         mouse_release_y_ = mouse_current_y_;
     } else {
-        mouse[0] = -mouse_release_x_;
-        mouse[1] = -mouse_release_y_;
+        mouse[0] = mouse_release_x_;
+        mouse[1] = mouse_release_y_;
         mouse[2] = -mouse_release_x_;
         mouse[3] = mouse_tap_pending_ ? mouse_release_y_ : -mouse_release_y_;
 
