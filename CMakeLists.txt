@@ -13,6 +13,7 @@ pkg_check_modules(JSONCPP REQUIRED IMPORTED_TARGET jsoncpp)
 
 set(SHADERDOCK_SOURCES
     src/app/main.cpp
+    src/app/AppConfig.cpp
     src/app/ShaderDockApp.cpp
     src/render/FullscreenTriangle.cpp
     src/render/GlLoader.cpp
@@ -23,6 +24,7 @@ set(SHADERDOCK_SOURCES
     src/render/ShaderProgram.cpp
     src/resources/DemoManifest.cpp
     src/resources/AssetIO.cpp
+    src/resources/DemoCatalog.cpp
     src/resources/TextureLoader.cpp
     src/resources/stb_image_impl.cpp
     src/third_party/glad/src/glad.c

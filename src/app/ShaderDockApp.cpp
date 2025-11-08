@@ -4,8 +4,9 @@
 #include <atomic>
 #include <chrono>
 #include <csignal>
-#include <filesystem>
+#include <cmath>
 #include <ctime>
+#include <filesystem>
 #include <string>
 #include <utility>
 
@@ -14,13 +15,11 @@
 #include "render/GlLoader.hpp"
 #include "render/RenderPipeline.hpp"
 #include "resources/AssetIO.hpp"
+#include "resources/DemoCatalog.hpp"
 
 namespace shaderdock::app {
 
 namespace {
-constexpr int kWindowWidth = 720;
-constexpr int kWindowHeight = 480;
-constexpr Uint32 kFrameDelayMs = 16;
 
 std::atomic_bool g_keep_running{true};
 
@@ -54,6 +53,11 @@ std::array<float, 4> BuildDateUniform()
 }
 } // namespace
 
+ShaderDockApp::ShaderDockApp(AppOptions options)
+    : options_(std::move(options))
+{
+}
+
 bool ShaderDockApp::initialize()
 {
     if (sdl_initialized_) {
@@ -69,6 +73,11 @@ bool ShaderDockApp::initialize()
     sdl_initialized_ = true;
 
     std::signal(SIGINT, HandleSigint);
+
+    if (!load_app_config()) {
+        SDL_Log("Failed to load application config.");
+        return false;
+    }
 
     if (!create_window_and_context()) {
         return false;
@@ -101,6 +110,31 @@ bool ShaderDockApp::initialize()
     return true;
 }
 
+bool ShaderDockApp::load_app_config()
+{
+    if (!LoadOrCreateAppConfig(config_, &config_path_)) {
+        return false;
+    }
+
+    drawable_width_ = config_.window_width;
+    drawable_height_ = config_.window_height;
+    if (config_.target_fps > 0) {
+        const double interval_ms = 1000.0 / static_cast<double>(config_.target_fps);
+        frame_delay_ms_ = static_cast<Uint32>(std::max(0, static_cast<int>(std::llround(interval_ms))));
+    } else {
+        frame_delay_ms_ = 0;
+    }
+    SDL_Log(
+        "Config active: %dx%d fullscreen=%s vsync=%s fps=%d (frame_delay_ms=%u)",
+        config_.window_width,
+        config_.window_height,
+        config_.fullscreen ? "true" : "false",
+        config_.vsync ? "true" : "false",
+        config_.target_fps,
+        frame_delay_ms_);
+    return true;
+}
+
 bool ShaderDockApp::create_window_and_context()
 {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
@@ -112,19 +146,22 @@ bool ShaderDockApp::create_window_and_context()
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
 
+    const Uint32 window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN |
+        (config_.resizable ? SDL_WINDOW_RESIZABLE : 0);
+
     window_ = SDL_CreateWindow(
         "ShaderDock",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
-        kWindowWidth,
-        kWindowHeight,
-        SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+        config_.window_width,
+        config_.window_height,
+        window_flags);
     if (window_ == nullptr) {
         SDL_Log("SDL_CreateWindow failed: %s", SDL_GetError());
         return false;
     }
 
-    SDL_SetWindowResizable(window_, SDL_FALSE);
+    SDL_SetWindowResizable(window_, config_.resizable ? SDL_TRUE : SDL_FALSE);
 
     gl_context_ = SDL_GL_CreateContext(window_);
     if (gl_context_ == nullptr) {
@@ -137,7 +174,12 @@ bool ShaderDockApp::create_window_and_context()
         return false;
     }
 
-    if (SDL_GL_SetSwapInterval(1) != 0) {
+    if (config_.fullscreen) {
+        SDL_SetWindowFullscreen(window_, SDL_WINDOW_FULLSCREEN_DESKTOP);
+    }
+
+    const int swap_interval = config_.vsync ? 1 : 0;
+    if (SDL_GL_SetSwapInterval(swap_interval) != 0) {
         SDL_Log("SDL_GL_SetSwapInterval failed: %s", SDL_GetError());
     }
 
@@ -147,25 +189,70 @@ bool ShaderDockApp::create_window_and_context()
 
 bool ShaderDockApp::load_demo_resources()
 {
-    constexpr const char* kDefaultDemoManifest = "assets/demos/Texture_LOD/demo.json";
-    const std::filesystem::path manifest_path = resources::ResolveAssetPath(kDefaultDemoManifest);
-    if (manifest_path.empty()) {
-        SDL_Log("Unable to locate demo manifest at %s", kDefaultDemoManifest);
+    if (!resolve_demo_selection()) {
         return false;
     }
 
-    auto manifest = resources::LoadDemoManifest(manifest_path);
+    auto manifest = resources::LoadDemoManifest(selected_manifest_path_);
     if (!manifest) {
-        SDL_Log("Failed to parse demo manifest: %s", manifest_path.string().c_str());
+        SDL_Log("Failed to parse demo manifest: %s", selected_manifest_path_.string().c_str());
         return false;
     }
 
     demo_manifest_ = std::move(*manifest);
-    SDL_Log("Demo '%s' manifest ready.", demo_manifest_->info.name.c_str());
+    const std::string label = selected_demo_name_.empty() ? demo_manifest_->info.name : selected_demo_name_;
+    SDL_Log(
+        "Demo '%s' manifest ready (%s).",
+        label.c_str(),
+        selected_manifest_path_.string().c_str());
     if (!preload_textures()) {
         return false;
     }
     return build_pipeline();
+}
+
+bool ShaderDockApp::resolve_demo_selection()
+{
+    auto demos = resources::EnumerateAvailableDemos();
+    if (demos.empty()) {
+        SDL_Log("No demos found under assets/demos.");
+        return false;
+    }
+
+    auto select_with_token = [&demos](const std::string& token) -> std::optional<resources::DemoEntry> {
+        if (token.empty()) {
+            return std::nullopt;
+        }
+        return resources::FindDemoByToken(demos, token);
+    };
+
+    std::optional<resources::DemoEntry> selection;
+
+    if (options_.demo_token) {
+        selection = select_with_token(*options_.demo_token);
+        if (!selection) {
+            SDL_Log("Requested demo '%s' not found, falling back to defaults.", options_.demo_token->c_str());
+        }
+    }
+
+    if (!selection && !config_.default_demo.empty()) {
+        selection = select_with_token(config_.default_demo);
+        if (!selection) {
+            SDL_Log("Config default demo '%s' not found.", config_.default_demo.c_str());
+        }
+    }
+
+    if (!selection) {
+        selection = demos.front();
+    }
+
+    selected_manifest_path_ = selection->manifest_path;
+    selected_demo_name_ = selection->display_name.empty() ? selection->folder_name : selection->display_name;
+    SDL_Log(
+        "Selected demo '%s' (%s).",
+        selected_demo_name_.c_str(),
+        selected_manifest_path_.string().c_str());
+    return true;
 }
 
 bool ShaderDockApp::preload_textures()
@@ -266,7 +353,9 @@ void ShaderDockApp::run()
 
         render_frame(elapsed_seconds, delta_seconds);
         SDL_GL_SwapWindow(window_);
-        SDL_Delay(kFrameDelayMs);
+        if (frame_delay_ms_ > 0) {
+            SDL_Delay(frame_delay_ms_);
+        }
     }
 }
 

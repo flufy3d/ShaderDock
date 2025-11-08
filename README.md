@@ -20,6 +20,44 @@ just like ShaderToy, but fully offline and portable.
 - ⚡ **Lightweight and fast** – Minimal dependencies, instant startup  
 - 💻 **Cross-platform** – Runs on Linux and Windows (planned macOS support)
 
+---
+
+## 🚀 Usage
+
+### Build & run
+
+```bash
+cmake -S . -B build
+cmake --build build
+./build/ShaderDock.exe --list-demos
+./build/ShaderDock.exe --demo 2      # or name, e.g. --demo Halloween_Radiosity
+```
+
+- `--list-demos` / `--list-demo`: enumerate every manifest under `assets/demos` (with index + folder name).  
+- `--demo <token>`: launch by index, folder, or display name; falls back to config default or the first entry.  
+- `--help`: print available options.
+
+### Configuration
+
+On first launch ShaderDock writes `config.json` under SDL’s pref path (editable):
+
+| Platform | Location |
+| --- | --- |
+| Windows | `%APPDATA%\ShaderDock\ShaderDock\config.json` |
+| Linux | `~/.local/share/ShaderDock/ShaderDock/config.json` |
+
+Config keys:
+
+| Key | Description | Default |
+| --- | --- | --- |
+| `width` / `height` | SDL window size (pixels) | 1280 / 720 |
+| `fullscreen` | `true` = borderless desktop fullscreen | `false` |
+| `resizable` | allow resize by dragging window edges | `false` |
+| `vsync` | request vsync via `SDL_GL_SetSwapInterval` | `true` |
+| `fps` | target frame rate (0 = uncapped) | `60` |
+| `default_demo` | default demo token (index/name/folder) | `""` |
+
+CLI flags override the config; edit and restart to take effect.
 
 ---
 
@@ -42,6 +80,30 @@ just like ShaderToy, but fully offline and portable.
      ].forEach(url => window.open(url));
      ```
      Paste each block into a browser console to open all download tabs at once, then store the files under `assets/textures` or `assets/cubemaps` using the same filenames referenced in `demo.json`.
+
+---
+
+## 🎛 Shader Inputs
+
+ShaderDock injects the full ShaderToy uniform set into every pass:
+
+```glsl
+uniform vec3      iResolution;            // viewport resolution (pixels)
+uniform float     iTime;                  // playback time (seconds)
+uniform float     iTimeDelta;             // render time of last frame (seconds)
+uniform float     iFrameRate;             // instantaneous FPS
+uniform int       iFrame;                 // frame counter
+uniform float     iChannelTime[4];        // per-channel time (seconds)
+uniform vec3      iChannelResolution[4];  // per-channel resolution (pixels)
+uniform vec4      iMouse;                 // xy=current (if LMB down), zw=click position
+uniform sampler2D iChannel0;
+uniform sampler2D iChannel1;
+uniform sampler2D iChannel2;
+uniform sampler2D iChannel3;
+uniform vec4      iDate;                  // (year, month, day, seconds)
+```
+
+`iChannelX` automatically switches between 2D and cubemap samplers and binds buffers/FBOs or textures based on `demo.json`.
 
 ---
 

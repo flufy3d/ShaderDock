@@ -3,11 +3,13 @@
 #include <SDL.h>
 
 #include <array>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
 
+#include "app/AppConfig.hpp"
 #include "render/FullscreenTriangle.hpp"
 #include "render/RenderPipeline.hpp"
 #include "resources/DemoManifest.hpp"
@@ -15,16 +17,24 @@
 
 namespace shaderdock::app {
 
+struct AppOptions {
+    std::optional<std::string> demo_token;
+};
+
 class ShaderDockApp
 {
 public:
+    explicit ShaderDockApp(AppOptions options = {});
+
     bool initialize();
     void run();
     void shutdown();
 
 private:
+    bool load_app_config();
     bool create_window_and_context();
     bool load_demo_resources();
+    bool resolve_demo_selection();
     bool preload_textures();
     bool build_pipeline();
     void process_event(const SDL_Event& event);
@@ -32,6 +42,10 @@ private:
     void render_frame(float elapsed_seconds, float delta_seconds);
     void update_mouse_position(int window_x, int window_y);
     std::array<float, 4> build_mouse_uniform() const;
+
+    AppOptions options_;
+    AppConfig config_;
+    std::filesystem::path config_path_;
 
     SDL_Window* window_ = nullptr;
     SDL_GLContext gl_context_ = nullptr;
@@ -43,12 +57,15 @@ private:
     Uint32 start_ticks_ = 0;
     Uint32 last_frame_ticks_ = 0;
     int frame_index_ = 0;
+    Uint32 frame_delay_ms_ = 0;
 
     render::FullscreenTriangle full_screen_triangle_;
     render::RenderPipeline pipeline_;
     render::FrameUniforms frame_uniforms_;
 
     std::optional<resources::DemoManifest> demo_manifest_;
+    std::filesystem::path selected_manifest_path_;
+    std::string selected_demo_name_;
     resources::TextureCache texture_cache_;
     std::unordered_map<std::string, std::shared_ptr<resources::TextureHandle>> texture_bindings_;
 
