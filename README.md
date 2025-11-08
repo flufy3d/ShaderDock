@@ -24,11 +24,15 @@ just like ShaderToy, but fully offline and portable.
 
 ## 🚀 Usage
 
-### Build & run
+### Build
+
+Full build prerequisites and configuration steps live in [`Build.md`](Build.md).
+
+### Run
+
+After completing the steps in [`Build.md`](Build.md), launch demos via:
 
 ```bash
-cmake -S . -B build
-cmake --build build
 ./build/ShaderDock.exe --list-demos
 ./build/ShaderDock.exe --demo 2      # or name, e.g. --demo Halloween_Radiosity
 ```
