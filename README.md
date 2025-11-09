@@ -27,11 +27,11 @@ just like ShaderToy, but fully offline and portable.
 
 ### Build
 
-Full build prerequisites and configuration steps live in [`Build.md`](Build.md).
+Full build prerequisites and configuration steps live in [`docs/Build.md`](docs/Build.md).
 
 ### Run
 
-After completing the steps in [`Build.md`](Build.md), launch demos via:
+After completing the steps in [`docs/Build.md`](docs/Build.md), launch demos via:
 
 ```bash
 ./build/ShaderDock.exe --list-demos
@@ -63,6 +63,11 @@ Config keys:
 | `default_demo` | default demo token (index/name/folder) | `""` |
 
 CLI flags override the config; edit and restart to take effect.
+
+### Documentation
+
+- [`docs/Architecture.md`](docs/Architecture.md) – directory structure, design principles, and extension guide.  
+- [`docs/Build.md`](docs/Build.md) – toolchains, dependencies, and full build steps.
 
 ---
 

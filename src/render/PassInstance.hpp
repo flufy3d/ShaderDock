@@ -1,14 +1,16 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
 
+#include "bindings/PassInputBinding.hpp"
+#include "manifest/ManifestTypes.hpp"
 #include "render/PipelineTypes.hpp"
 #include "render/ShaderProgram.hpp"
-#include "resources/DemoManifest.hpp"
 #include "resources/TextureLoader.hpp"
 #include <glad/glad.h>
 
@@ -25,16 +27,17 @@ public:
     PassInstance(PassInstance&&) noexcept = default;
     PassInstance& operator=(PassInstance&&) noexcept = default;
 
+    using BindingFactory = std::function<std::unique_ptr<bindings::PassInputBinding>(const manifest::PassInput&)>;
+
     bool initialize(
-        const resources::RenderPass& pass,
+        const manifest::RenderPass& pass,
         bool uses_history,
         BufferSurface* target_buffer,
-        const std::unordered_map<std::string, BufferSurface*>& buffer_sources,
-        const std::unordered_map<std::string, std::shared_ptr<resources::TextureHandle>>& texture_bindings,
+        const BindingFactory& binding_factory,
         const std::string& common_source,
         int hardware_performance_level);
 
-    const resources::RenderPass* manifest() const { return manifest_; }
+    const manifest::RenderPass* manifest() const { return manifest_; }
     BufferSurface* target_buffer() const { return target_buffer_; }
 
     void use_program() const { program_.use(); }
@@ -43,13 +46,6 @@ public:
     void apply_uniforms(const FrameUniforms& frame, int target_width, int target_height) const;
 
 private:
-    struct InputBinding {
-        int channel = 0;
-        resources::PassInputType type = resources::PassInputType::kTexture;
-        std::shared_ptr<resources::TextureHandle> texture;
-        BufferSurface* buffer = nullptr;
-    };
-
     struct UniformLocations {
         GLint iResolution = -1;
         GLint iTime = -1;
@@ -63,23 +59,20 @@ private:
         std::array<GLint, 4> channel_samplers{ -1, -1, -1, -1 };
     };
 
-    std::string load_pass_source(const resources::RenderPass& pass) const;
+    std::string load_pass_source(const manifest::RenderPass& pass) const;
     std::string build_fragment_source(
-        const resources::RenderPass& pass,
+        const manifest::RenderPass& pass,
         std::string_view raw,
         const std::string& common_source,
         int hardware_performance_level) const;
     void cache_uniform_locations();
-    bool build_input_bindings(
-        const resources::RenderPass& pass,
-        const std::unordered_map<std::string, BufferSurface*>& buffer_sources,
-        const std::unordered_map<std::string, std::shared_ptr<resources::TextureHandle>>& texture_bindings);
+    bool build_input_bindings(const manifest::RenderPass& pass, const BindingFactory& binding_factory);
 
-    const resources::RenderPass* manifest_ = nullptr;
+    const manifest::RenderPass* manifest_ = nullptr;
     bool uses_history_ = false;
     BufferSurface* target_buffer_ = nullptr;
     ShaderProgram program_;
-    std::vector<InputBinding> inputs_;
+    std::vector<std::unique_ptr<bindings::PassInputBinding>> input_bindings_;
     UniformLocations uniforms_;
 };
 

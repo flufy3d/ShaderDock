@@ -12,6 +12,7 @@
 
 #include <glad/glad.h>
 
+#include "bindings/PassInputBinding.hpp"
 #include "resources/AssetIO.hpp"
 
 namespace shaderdock::render {
@@ -78,10 +79,10 @@ std::string NormalizeMacroSuffix(std::string_view name)
     return result;
 }
 
-std::array<resources::PassInputType, 4> BuildChannelTypes(const resources::RenderPass& pass)
+std::array<manifest::PassInputType, 4> BuildChannelTypes(const manifest::RenderPass& pass)
 {
-    std::array<resources::PassInputType, 4> channel_types{};
-    channel_types.fill(resources::PassInputType::kTexture);
+    std::array<manifest::PassInputType, 4> channel_types{};
+    channel_types.fill(manifest::PassInputType::kTexture);
 
     for (const auto& input : pass.inputs) {
         if (input.channel >= 0 && input.channel < 4) {
@@ -92,9 +93,9 @@ std::array<resources::PassInputType, 4> BuildChannelTypes(const resources::Rende
     return channel_types;
 }
 
-const char* SamplerTypeForChannel(resources::PassInputType input_type)
+const char* SamplerTypeForChannel(manifest::PassInputType input_type)
 {
-    if (input_type == resources::PassInputType::kCubemap) {
+    if (input_type == manifest::PassInputType::kCubemap) {
         return "samplerCube";
     }
     return "sampler2D";
@@ -103,11 +104,10 @@ const char* SamplerTypeForChannel(resources::PassInputType input_type)
 } // namespace
 
 bool PassInstance::initialize(
-    const resources::RenderPass& pass,
+    const manifest::RenderPass& pass,
     bool uses_history,
     BufferSurface* target_buffer,
-    const std::unordered_map<std::string, BufferSurface*>& buffer_sources,
-    const std::unordered_map<std::string, std::shared_ptr<resources::TextureHandle>>& texture_bindings,
+    const BindingFactory& binding_factory,
     const std::string& common_source,
     int hardware_performance_level)
 {
@@ -127,7 +127,7 @@ bool PassInstance::initialize(
         return false;
     }
 
-    if (!build_input_bindings(pass, buffer_sources, texture_bindings)) {
+    if (!build_input_bindings(pass, binding_factory)) {
         return false;
     }
 
@@ -137,41 +137,28 @@ bool PassInstance::initialize(
 
 void PassInstance::bind_inputs() const
 {
-    for (const auto& binding : inputs_) {
-        if (binding.channel < 0 || binding.channel > 3) {
+    for (const auto& binding : input_bindings_) {
+        if (!binding) {
             continue;
         }
-        glActiveTexture(GL_TEXTURE0 + binding.channel);
-        if (
-            binding.type == resources::PassInputType::kTexture ||
-            binding.type == resources::PassInputType::kCubemap ||
-            binding.type == resources::PassInputType::kKeyboard) {
-            if (binding.texture) {
-                glBindTexture(binding.texture->target(), binding.texture->id());
-            }
-        } else if (binding.type == resources::PassInputType::kBuffer) {
-            if (binding.buffer != nullptr) {
-                glBindTexture(GL_TEXTURE_2D, binding.buffer->read_texture());
-            }
+        if (binding->channel() < 0 || binding->channel() > 3) {
+            continue;
         }
+        binding->bind();
     }
     glActiveTexture(GL_TEXTURE0);
 }
 
 void PassInstance::unbind_inputs() const
 {
-    for (const auto& binding : inputs_) {
-        if (binding.channel < 0 || binding.channel > 3) {
+    for (const auto& binding : input_bindings_) {
+        if (!binding) {
             continue;
         }
-        glActiveTexture(GL_TEXTURE0 + binding.channel);
-        if (binding.type == resources::PassInputType::kTexture || binding.type == resources::PassInputType::kKeyboard) {
-            glBindTexture(GL_TEXTURE_2D, 0);
-        } else if (binding.type == resources::PassInputType::kCubemap) {
-            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-        } else {
-            glBindTexture(GL_TEXTURE_2D, 0);
+        if (binding->channel() < 0 || binding->channel() > 3) {
+            continue;
         }
+        binding->unbind();
     }
     glActiveTexture(GL_TEXTURE0);
 }
@@ -181,37 +168,32 @@ void PassInstance::apply_uniforms(const FrameUniforms& frame, int target_width, 
     std::array<float, 4> channel_time = frame.channel_time;
     std::array<float, 12> channel_resolution{};
 
-    for (const auto& binding : inputs_) {
-        if (binding.channel < 0 || binding.channel > 3) {
+    for (const auto& binding : input_bindings_) {
+        if (!binding) {
             continue;
         }
 
-        float width = 0.0F;
-        float height = 0.0F;
-        float time_value = channel_time[static_cast<std::size_t>(binding.channel)];
-
-        if (
-            binding.type == resources::PassInputType::kTexture ||
-            binding.type == resources::PassInputType::kCubemap ||
-            binding.type == resources::PassInputType::kKeyboard) {
-            if (binding.texture) {
-                width = static_cast<float>(binding.texture->width());
-                height = static_cast<float>(binding.texture->height());
-            }
-            time_value = frame.time_seconds;
-        } else if (binding.type == resources::PassInputType::kBuffer) {
-            if (binding.buffer != nullptr) {
-                width = static_cast<float>(binding.buffer->width);
-                height = static_cast<float>(binding.buffer->height);
-                time_value = binding.buffer->last_updated_seconds;
-            }
+        const int channel = binding->channel();
+        if (channel < 0 || channel > 3) {
+            continue;
         }
 
-        const int base = binding.channel * 3;
+        const std::size_t idx = static_cast<std::size_t>(channel);
+        const float width = binding->width();
+        const float height = binding->height();
+        float time_value = channel_time[idx];
+
+        if (binding->type() == manifest::PassInputType::kBuffer) {
+            time_value = binding->last_updated_seconds();
+        } else {
+            time_value = frame.time_seconds;
+        }
+
+        const int base = channel * 3;
         channel_resolution[static_cast<std::size_t>(base)] = width;
         channel_resolution[static_cast<std::size_t>(base + 1)] = height;
         channel_resolution[static_cast<std::size_t>(base + 2)] = 1.0F;
-        channel_time[static_cast<std::size_t>(binding.channel)] = time_value;
+        channel_time[idx] = time_value;
     }
 
     if (uniforms_.iResolution >= 0) {
@@ -248,7 +230,7 @@ void PassInstance::apply_uniforms(const FrameUniforms& frame, int target_width, 
     }
 }
 
-std::string PassInstance::load_pass_source(const resources::RenderPass& pass) const
+std::string PassInstance::load_pass_source(const manifest::RenderPass& pass) const
 {
     std::string source = resources::ReadTextFile(pass.source_path.string());
     if (source.empty()) {
@@ -258,7 +240,7 @@ std::string PassInstance::load_pass_source(const resources::RenderPass& pass) co
 }
 
 std::string PassInstance::build_fragment_source(
-    const resources::RenderPass& pass,
+    const manifest::RenderPass& pass,
     std::string_view raw,
     const std::string& common_source,
     int hardware_performance_level) const
@@ -272,9 +254,9 @@ std::string PassInstance::build_fragment_source(
     oss << "#define HW_PERFORMANCE " << hardware_performance_level << '\n';
 
     oss << "#define SHADERDOCK_PASS 1\n";
-    if (pass.type == resources::RenderPassType::kImage) {
+    if (pass.type == manifest::RenderPassType::kImage) {
         oss << "#define SHADERDOCK_PASS_IMAGE 1\n";
-    } else if (pass.type == resources::RenderPassType::kBuffer) {
+    } else if (pass.type == manifest::RenderPassType::kBuffer) {
         oss << "#define SHADERDOCK_PASS_BUFFER 1\n";
     }
 
@@ -347,53 +329,21 @@ void PassInstance::cache_uniform_locations()
     }
 }
 
-bool PassInstance::build_input_bindings(
-    const resources::RenderPass& pass,
-    const std::unordered_map<std::string, BufferSurface*>& buffer_sources,
-    const std::unordered_map<std::string, std::shared_ptr<resources::TextureHandle>>& texture_bindings)
+bool PassInstance::build_input_bindings(const manifest::RenderPass& pass, const BindingFactory& binding_factory)
 {
-    inputs_.clear();
-    inputs_.reserve(pass.inputs.size());
+    input_bindings_.clear();
+    input_bindings_.reserve(pass.inputs.size());
 
     for (const auto& input : pass.inputs) {
-        if (input.channel < 0 || input.channel > 3) {
+        auto binding = binding_factory ? binding_factory(input) : nullptr;
+        if (!binding) {
             SDL_Log(
-                "PassInstance: input channel %d out of range for pass %s.",
-                input.channel,
+                "PassInstance: failed to create binding '%s' for pass %s.",
+                input.id.c_str(),
                 pass.name.c_str());
-            continue;
+            return false;
         }
-
-        InputBinding binding;
-        binding.channel = input.channel;
-        binding.type = input.type;
-
-        if (
-            input.type == resources::PassInputType::kTexture ||
-            input.type == resources::PassInputType::kCubemap ||
-            input.type == resources::PassInputType::kKeyboard) {
-            auto tex_it = texture_bindings.find(input.id);
-            if (tex_it == texture_bindings.end() || !tex_it->second) {
-                SDL_Log(
-                    "PassInstance: missing texture binding '%s' for pass %s.",
-                    input.id.c_str(),
-                    pass.name.c_str());
-                return false;
-            }
-            binding.texture = tex_it->second;
-        } else if (input.type == resources::PassInputType::kBuffer) {
-            auto surface_it = buffer_sources.find(input.id);
-            if (surface_it == buffer_sources.end()) {
-                SDL_Log(
-                    "PassInstance: missing buffer source '%s' for pass %s.",
-                    input.id.c_str(),
-                    pass.name.c_str());
-                return false;
-            }
-            binding.buffer = surface_it->second;
-        }
-
-        inputs_.emplace_back(std::move(binding));
+        input_bindings_.emplace_back(std::move(binding));
     }
 
     return true;

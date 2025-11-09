@@ -13,7 +13,6 @@
 #include <json/json.h>
 
 #include "resources/AssetIO.hpp"
-#include "resources/DemoManifest.hpp"
 
 namespace shaderdock::resources {
 

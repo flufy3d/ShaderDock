@@ -43,8 +43,8 @@ RenderPipeline::~RenderPipeline()
 }
 
 bool RenderPipeline::initialize(
-    const resources::DemoManifest& manifest,
-    const std::unordered_map<std::string, std::shared_ptr<resources::TextureHandle>>& texture_bindings,
+    const manifest::DemoManifest& manifest,
+    const std::vector<bindings::InputProviderPtr>& input_providers,
     FullscreenTriangle* fullscreen_triangle,
     int hardware_performance_level)
 {
@@ -56,12 +56,15 @@ bool RenderPipeline::initialize(
         return false;
     }
     hardware_performance_level_ = hardware_performance_level;
+    input_providers_ = input_providers;
+    buffer_provider_ = std::make_shared<bindings::BufferInputProvider>();
+    input_providers_.push_back(buffer_provider_);
 
     if (!build_common_source(manifest)) {
         return false;
     }
 
-    if (!prepare_passes(manifest, texture_bindings)) {
+    if (!prepare_passes(manifest)) {
         return false;
     }
 
@@ -73,6 +76,8 @@ void RenderPipeline::shutdown()
     execution_order_.clear();
     fullscreen_triangle_ = nullptr;
     hardware_performance_level_ = 0;
+    input_providers_.clear();
+    buffer_provider_.reset();
 
     for (auto& surface_entry : buffer_surfaces_) {
         surface_entry.second.reset();
@@ -134,11 +139,11 @@ void RenderPipeline::render(const FrameUniforms& frame, int drawable_width, int 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-bool RenderPipeline::build_common_source(const resources::DemoManifest& manifest)
+bool RenderPipeline::build_common_source(const manifest::DemoManifest& manifest)
 {
     common_source_.clear();
     for (const auto& pass : manifest.passes) {
-        if (pass.type != resources::RenderPassType::kCommon) {
+        if (pass.type != manifest::RenderPassType::kCommon) {
             continue;
         }
 
@@ -155,9 +160,7 @@ bool RenderPipeline::build_common_source(const resources::DemoManifest& manifest
     return true;
 }
 
-bool RenderPipeline::prepare_passes(
-    const resources::DemoManifest& manifest,
-    const std::unordered_map<std::string, std::shared_ptr<resources::TextureHandle>>& texture_bindings)
+bool RenderPipeline::prepare_passes(const manifest::DemoManifest& manifest)
 {
     execution_order_.clear();
     buffer_surfaces_.clear();
@@ -171,6 +174,9 @@ bool RenderPipeline::prepare_passes(
         const std::string& buffer_id = entry.first;
         buffer_surfaces_[buffer_id] = BufferSurface{.id = buffer_id};
     }
+    if (buffer_provider_) {
+        buffer_provider_->set_buffer_surfaces(&buffer_surfaces_);
+    }
 
     execution_order_.reserve(plan.ordered_passes.size());
 
@@ -179,12 +185,12 @@ bool RenderPipeline::prepare_passes(
         id_to_surface[id] = &surface;
     }
 
-    for (const resources::RenderPass* pass : plan.ordered_passes) {
+    for (const manifest::RenderPass* pass : plan.ordered_passes) {
         BufferSurface* target_surface = nullptr;
         const auto history_it = plan.uses_history.find(pass);
         const bool uses_history = history_it != plan.uses_history.end() && history_it->second;
 
-        if (pass->type == resources::RenderPassType::kBuffer) {
+        if (pass->type == manifest::RenderPassType::kBuffer) {
             auto id_it = plan.buffer_ids.find(pass);
             if (id_it == plan.buffer_ids.end()) {
                 SDL_Log("RenderPipeline: buffer pass %s missing assigned ID.", pass->name.c_str());
@@ -202,12 +208,15 @@ bool RenderPipeline::prepare_passes(
         }
 
         PassInstance instance;
+        auto binding_factory = [this](const manifest::PassInput& input) {
+            return create_input_binding(input);
+        };
+
         if (!instance.initialize(
                 *pass,
                 uses_history,
                 target_surface,
-                id_to_surface,
-                texture_bindings,
+                binding_factory,
                 common_source_,
                 hardware_performance_level_)) {
             return false;
@@ -277,6 +286,21 @@ bool RenderPipeline::ensure_surface_size(BufferSurface& surface, int width, int 
 
     surface.front_index = 0;
     return true;
+}
+
+std::unique_ptr<bindings::PassInputBinding> RenderPipeline::create_input_binding(const manifest::PassInput& input) const
+{
+    for (const auto& provider : input_providers_) {
+        if (provider && provider->supports(input.type)) {
+            return provider->create_binding(input);
+        }
+    }
+
+    SDL_Log(
+        "RenderPipeline: no provider available for input '%s' (type=%s).",
+        input.id.c_str(),
+        std::string(manifest::ToString(input.type)).c_str());
+    return nullptr;
 }
 
 } // namespace shaderdock::render

@@ -1,4 +1,4 @@
-#include "resources/DemoManifest.hpp"
+#include "manifest/DemoManifestLoader.hpp"
 
 #include <SDL.h>
 #include <json/json.h>
@@ -11,13 +11,15 @@
 #include <sstream>
 #include <string_view>
 #include <system_error>
-#include <utility>
 
 #include "resources/AssetIO.hpp"
 
-namespace shaderdock::resources {
+namespace shaderdock::manifest {
 
 namespace {
+
+using shaderdock::resources::ReadTextFile;
+using shaderdock::resources::ResolveAssetPath;
 
 std::string ToLowerCopy(std::string_view value)
 {
@@ -215,7 +217,7 @@ DemoInfo ParseDemoInfo(const Json::Value& info_json)
 
 } // namespace
 
-std::optional<DemoManifest> LoadDemoManifest(const std::filesystem::path& manifest_path)
+std::optional<DemoManifest> DemoManifestLoader::load(const std::filesystem::path& manifest_path) const
 {
     std::filesystem::path resolved = manifest_path;
     std::error_code ec;
@@ -312,7 +314,10 @@ std::optional<DemoManifest> LoadDemoManifest(const std::filesystem::path& manife
                     !input.filepath.empty()) {
                     input.resolved_path = ResolveInputPath(manifest, input.filepath);
                     if (!input.resolved_path) {
-                        SDL_Log("Failed to resolve resource path for input %s (%s).", input.id.c_str(), input.filepath.c_str());
+                        SDL_Log(
+                            "Failed to resolve resource path for input %s (%s).",
+                            input.id.c_str(),
+                            input.filepath.c_str());
                         return std::nullopt;
                     }
                 }
@@ -331,34 +336,4 @@ std::optional<DemoManifest> LoadDemoManifest(const std::filesystem::path& manife
     return manifest;
 }
 
-std::string_view ToString(RenderPassType type)
-{
-    switch (type) {
-        case RenderPassType::kImage:
-            return "image";
-        case RenderPassType::kBuffer:
-            return "buffer";
-        case RenderPassType::kCommon:
-            return "common";
-        default:
-            return "unknown";
-    }
-}
-
-std::string_view ToString(PassInputType type)
-{
-    switch (type) {
-        case PassInputType::kTexture:
-            return "texture";
-        case PassInputType::kCubemap:
-            return "cubemap";
-        case PassInputType::kBuffer:
-            return "buffer";
-        case PassInputType::kKeyboard:
-            return "keyboard";
-        default:
-            return "texture";
-    }
-}
-
-} // namespace shaderdock::resources
+} // namespace shaderdock::manifest

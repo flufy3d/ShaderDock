@@ -8,9 +8,11 @@
 
 #include <glad/glad.h>
 
-#include "resources/DemoManifest.hpp"
+#include "manifest/ManifestTypes.hpp"
 
 namespace shaderdock::resources {
+
+using manifest::SamplerDesc;
 
 class TextureHandle
 {
@@ -59,12 +61,12 @@ private:
     std::shared_ptr<TextureHandle> load_or_create(
         const std::filesystem::path& path,
         const SamplerDesc& sampler,
-        PassInputType type);
+        manifest::PassInputType type);
 
     static std::string BuildCacheKey(
         const std::filesystem::path& path,
         const SamplerDesc& sampler,
-        PassInputType type);
+        manifest::PassInputType type);
 
     std::unordered_map<std::string, std::weak_ptr<TextureHandle>> cache_;
 };

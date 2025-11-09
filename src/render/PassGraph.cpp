@@ -12,19 +12,19 @@ namespace shaderdock::render {
 
 namespace {
 
-bool IsBufferPass(const resources::RenderPass& pass)
+bool IsBufferPass(const manifest::RenderPass& pass)
 {
-    return pass.type == resources::RenderPassType::kBuffer;
+    return pass.type == manifest::RenderPassType::kBuffer;
 }
 
-bool IsExecutablePass(const resources::RenderPass& pass)
+bool IsExecutablePass(const manifest::RenderPass& pass)
 {
-    return pass.type == resources::RenderPassType::kBuffer ||
-        pass.type == resources::RenderPassType::kImage;
+    return pass.type == manifest::RenderPassType::kBuffer ||
+        pass.type == manifest::RenderPassType::kImage;
 }
 
 std::string GenerateSyntheticBufferId(
-    const resources::RenderPass& pass,
+    const manifest::RenderPass& pass,
     const std::unordered_set<std::string>& existing_ids)
 {
     std::string base = pass.name.empty() ? "buffer" : pass.name;
@@ -52,12 +52,12 @@ std::string GenerateSyntheticBufferId(
 
 } // namespace
 
-bool BuildPassExecutionPlan(const resources::DemoManifest& manifest, PassExecutionPlan& out_plan)
+bool BuildPassExecutionPlan(const manifest::DemoManifest& manifest, PassExecutionPlan& out_plan)
 {
     out_plan = PassExecutionPlan{};
 
-    std::vector<const resources::RenderPass*> executable_passes;
-    std::vector<const resources::RenderPass*> buffer_passes;
+    std::vector<const manifest::RenderPass*> executable_passes;
+    std::vector<const manifest::RenderPass*> buffer_passes;
     executable_passes.reserve(manifest.passes.size());
 
     std::vector<std::string> all_buffer_ids;
@@ -71,7 +71,7 @@ bool BuildPassExecutionPlan(const resources::DemoManifest& manifest, PassExecuti
             executable_passes.push_back(&pass);
         }
         for (const auto& input : pass.inputs) {
-            if (input.type == resources::PassInputType::kBuffer && !input.id.empty()) {
+            if (input.type == manifest::PassInputType::kBuffer && !input.id.empty()) {
                 if (unique_ids.insert(input.id).second) {
                     all_buffer_ids.push_back(input.id);
                 }
@@ -79,15 +79,15 @@ bool BuildPassExecutionPlan(const resources::DemoManifest& manifest, PassExecuti
         }
     }
 
-    std::unordered_map<const resources::RenderPass*, std::string> pass_to_buffer_id;
-    std::unordered_map<std::string, const resources::RenderPass*> buffer_id_to_pass;
+    std::unordered_map<const manifest::RenderPass*, std::string> pass_to_buffer_id;
+    std::unordered_map<std::string, const manifest::RenderPass*> buffer_id_to_pass;
     std::unordered_set<std::string> assigned_ids;
     assigned_ids.reserve(buffer_passes.size());
 
-    for (const resources::RenderPass* pass : buffer_passes) {
+    for (const manifest::RenderPass* pass : buffer_passes) {
         std::string chosen_id;
         for (const auto& input : pass->inputs) {
-            if (input.type != resources::PassInputType::kBuffer || input.id.empty()) {
+            if (input.type != manifest::PassInputType::kBuffer || input.id.empty()) {
                 continue;
             }
             if (assigned_ids.count(input.id) == 0) {
@@ -120,21 +120,21 @@ bool BuildPassExecutionPlan(const resources::DemoManifest& manifest, PassExecuti
         return true;
     }
 
-    std::unordered_map<const resources::RenderPass*, std::size_t> index_lookup;
+    std::unordered_map<const manifest::RenderPass*, std::size_t> index_lookup;
     for (std::size_t i = 0; i < executable_passes.size(); ++i) {
         index_lookup[executable_passes[i]] = i;
     }
 
     std::vector<std::vector<std::size_t>> adjacency(executable_passes.size());
     std::vector<int> indegree(executable_passes.size(), 0);
-    std::unordered_map<const resources::RenderPass*, bool> history_usage;
+    std::unordered_map<const manifest::RenderPass*, bool> history_usage;
 
     for (std::size_t i = 0; i < executable_passes.size(); ++i) {
-        const resources::RenderPass* pass = executable_passes[i];
+        const manifest::RenderPass* pass = executable_passes[i];
         history_usage[pass] = false;
 
         for (const auto& input : pass->inputs) {
-            if (input.type != resources::PassInputType::kBuffer || input.id.empty()) {
+            if (input.type != manifest::PassInputType::kBuffer || input.id.empty()) {
                 continue;
             }
 
@@ -147,7 +147,7 @@ bool BuildPassExecutionPlan(const resources::DemoManifest& manifest, PassExecuti
                 return false;
             }
 
-            const resources::RenderPass* dependency = src_it->second;
+            const manifest::RenderPass* dependency = src_it->second;
             if (dependency == pass) {
                 history_usage[pass] = true;
                 continue;
@@ -174,7 +174,7 @@ bool BuildPassExecutionPlan(const resources::DemoManifest& manifest, PassExecuti
         }
     }
 
-    std::vector<const resources::RenderPass*> ordered_passes;
+    std::vector<const manifest::RenderPass*> ordered_passes;
     ordered_passes.reserve(executable_passes.size());
     while (!ready.empty()) {
         std::size_t idx = ready.front();

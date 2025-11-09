@@ -11,7 +11,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET sdl2)
 pkg_check_modules(JSONCPP REQUIRED IMPORTED_TARGET jsoncpp)
 
-file(GLOB_RECURSE SHADERDOCK_SOURCES CONFIGURE_DEPENDS
+file(GLOB_RECURSE SHADERDOCK_SOURCES
     src/*.cpp
     src/*.c
 )

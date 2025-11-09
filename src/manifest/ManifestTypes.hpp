@@ -6,7 +6,7 @@
 #include <string_view>
 #include <vector>
 
-namespace shaderdock::resources {
+namespace shaderdock::manifest {
 
 enum class RenderPassType {
     kUnknown = 0,
@@ -52,7 +52,7 @@ struct PassInput {
     PassInputType type = PassInputType::kTexture;
     int channel = 0;
     bool published = false;
-    std::string filepath; // Original value from JSON (may be empty).
+    std::string filepath; // Value straight from JSON (may be empty).
     std::optional<std::filesystem::path> resolved_path;
     SamplerDesc sampler;
 };
@@ -84,9 +84,7 @@ struct DemoManifest {
     std::vector<RenderPass> passes;
 };
 
-std::optional<DemoManifest> LoadDemoManifest(const std::filesystem::path& manifest_path);
-
 std::string_view ToString(RenderPassType type);
 std::string_view ToString(PassInputType type);
 
-} // namespace shaderdock::resources
+} // namespace shaderdock::manifest
