@@ -3,8 +3,10 @@
 #include <SDL.h>
 
 #include <queue>
+#include <sstream>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace shaderdock::render {
 
@@ -102,7 +104,7 @@ bool BuildPassExecutionPlan(const manifest::DemoManifest& manifest, PassExecutio
     }
 
     std::vector<std::vector<std::size_t>> adjacency(executable_passes.size());
-    std::vector<int> indegree(executable_passes.size(), 0);
+    std::vector<std::vector<std::size_t>> reverse_adjacency(executable_passes.size());
     std::unordered_map<const manifest::RenderPass*, bool> history_usage;
 
     for (std::size_t i = 0; i < executable_passes.size(); ++i) {
@@ -138,8 +140,94 @@ bool BuildPassExecutionPlan(const manifest::DemoManifest& manifest, PassExecutio
                 return false;
             }
 
-            adjacency[dep_index_it->second].push_back(i);
-            indegree[i] += 1;
+            const std::size_t dep_index = dep_index_it->second;
+            adjacency[dep_index].push_back(i);
+            reverse_adjacency[i].push_back(dep_index);
+        }
+    }
+
+    std::vector<bool> visited(executable_passes.size(), false);
+    std::vector<std::size_t> order;
+    order.reserve(executable_passes.size());
+
+    auto dfs_forward = [&](auto&& self, std::size_t node) -> void {
+        visited[node] = true;
+        for (std::size_t neighbor : adjacency[node]) {
+            if (!visited[neighbor]) {
+                self(self, neighbor);
+            }
+        }
+        order.push_back(node);
+    };
+
+    for (std::size_t i = 0; i < executable_passes.size(); ++i) {
+        if (!visited[i]) {
+            dfs_forward(dfs_forward, i);
+        }
+    }
+
+    std::vector<int> component(executable_passes.size(), -1);
+    int component_count = 0;
+
+    auto dfs_reverse = [&](auto&& self, std::size_t node) -> void {
+        component[node] = component_count;
+        for (std::size_t neighbor : reverse_adjacency[node]) {
+            if (component[neighbor] == -1) {
+                self(self, neighbor);
+            }
+        }
+    };
+
+    while (!order.empty()) {
+        std::size_t node = order.back();
+        order.pop_back();
+        if (component[node] != -1) {
+            continue;
+        }
+        dfs_reverse(dfs_reverse, node);
+        component_count += 1;
+    }
+
+    std::vector<int> component_size(component_count, 0);
+    std::vector<std::vector<const manifest::RenderPass*>> component_passes(component_count);
+    for (std::size_t i = 0; i < executable_passes.size(); ++i) {
+        const int comp_id = component[i];
+        if (comp_id >= 0) {
+            component_size[comp_id] += 1;
+            component_passes[comp_id].push_back(executable_passes[i]);
+        }
+    }
+
+    for (int comp_id = 0; comp_id < component_count; ++comp_id) {
+        if (component_size[comp_id] > 1) {
+            std::ostringstream oss;
+            oss << "PassGraph: cycle detected involving passes ";
+            for (std::size_t i = 0; i < component_passes[comp_id].size(); ++i) {
+                if (i > 0) {
+                    oss << ", ";
+                }
+                oss << component_passes[comp_id][i]->name;
+            }
+            oss << ". Treating dependencies as history reads.";
+            SDL_Log("%s", oss.str().c_str());
+
+            for (const auto* pass : component_passes[comp_id]) {
+                history_usage[pass] = true;
+            }
+        }
+    }
+
+    std::vector<std::vector<std::size_t>> dag_adjacency(executable_passes.size());
+    std::vector<int> indegree(executable_passes.size(), 0);
+    for (std::size_t from = 0; from < adjacency.size(); ++from) {
+        for (std::size_t to : adjacency[from]) {
+            if (component[from] == component[to]) {
+                history_usage[executable_passes[from]] = true;
+                history_usage[executable_passes[to]] = true;
+                continue;
+            }
+            dag_adjacency[from].push_back(to);
+            indegree[to] += 1;
         }
     }
 
@@ -157,7 +245,7 @@ bool BuildPassExecutionPlan(const manifest::DemoManifest& manifest, PassExecutio
         ready.pop();
         ordered_passes.push_back(executable_passes[idx]);
 
-        for (std::size_t neighbor : adjacency[idx]) {
+        for (std::size_t neighbor : dag_adjacency[idx]) {
             indegree[neighbor] -= 1;
             if (indegree[neighbor] == 0) {
                 ready.push(neighbor);
