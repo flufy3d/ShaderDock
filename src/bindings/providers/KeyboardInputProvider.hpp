@@ -22,11 +22,13 @@ public:
     void update(float delta_seconds) override;
 
     void handle_key_event(const SDL_KeyboardEvent& key_event);
+    void handle_mouse_button_event(const SDL_MouseButtonEvent& button_event);
+    void handle_mouse_wheel_event(const SDL_MouseWheelEvent& wheel_event);
 
 private:
     struct KeyState {
         bool down = false;
-        bool toggle = false;
+        bool pending_press = false;
         float seconds_since_change = 0.0F;
     };
 
@@ -37,7 +39,11 @@ private:
     bool ensure_keyboard_texture();
     void reset_keyboard_state();
     std::optional<int> map_dom_keycode(SDL_Keycode key_code) const;
+    std::optional<int> map_mouse_button_code(uint8_t sdl_button) const;
     bool write_keyboard_pixel(int row, int column, uint8_t value);
+    void press_key(int key_index);
+    void release_key(int key_index);
+    void pulse_key(int key_index);
 
     std::shared_ptr<resources::TextureHandle> texture_;
     std::array<KeyState, kKeyboardTextureWidth> key_state_{};

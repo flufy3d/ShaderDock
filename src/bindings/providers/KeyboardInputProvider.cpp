@@ -4,6 +4,16 @@
 
 #include <glad/glad.h>
 
+namespace {
+
+constexpr int kButtonLeftCode = 245;
+constexpr int kButtonMiddleCode = 246;
+constexpr int kButtonRightCode = 247;
+constexpr int kScrollUpCode = 250;
+constexpr int kScrollDownCode = 251;
+
+} // namespace
+
 namespace shaderdock::bindings {
 
 KeyboardInputProvider::KeyboardInputProvider()
@@ -47,8 +57,11 @@ void KeyboardInputProvider::update(float delta_seconds)
         const uint8_t down_value = state.down ? 255 : 0;
         modified |= write_keyboard_pixel(0, key, down_value);
 
-        const uint8_t toggle_value = state.toggle ? 255 : 0;
-        modified |= write_keyboard_pixel(1, key, toggle_value);
+        const uint8_t press_value = state.pending_press ? 255 : 0;
+        modified |= write_keyboard_pixel(1, key, press_value);
+        if (state.pending_press) {
+            state.pending_press = false;
+        }
 
         const float normalized_time = state.seconds_since_change / kKeyboardMaxTime;
         const uint8_t time_value = static_cast<uint8_t>(std::clamp(normalized_time, 0.0F, 1.0F) * 255.0F + 0.5F);
@@ -82,29 +95,41 @@ void KeyboardInputProvider::handle_key_event(const SDL_KeyboardEvent& key_event)
         return;
     }
 
-    const int key_index = *mapped_code;
-    if (key_index < 0 || key_index >= kKeyboardTextureWidth) {
-        return;
-    }
-
-    KeyState& state = key_state_[static_cast<std::size_t>(key_index)];
     if (key_event.type == SDL_KEYDOWN) {
         if (key_event.repeat != 0) {
             return;
         }
-        if (!state.down) {
-            state.down = true;
-            state.toggle = !state.toggle;
-            state.seconds_since_change = 0.0F;
-            texture_dirty_ = true;
-        }
+        press_key(*mapped_code);
     } else if (key_event.type == SDL_KEYUP) {
-        if (!state.down) {
-            return;
-        }
-        state.down = false;
-        state.seconds_since_change = 0.0F;
-        texture_dirty_ = true;
+        release_key(*mapped_code);
+    }
+}
+
+void KeyboardInputProvider::handle_mouse_button_event(const SDL_MouseButtonEvent& button_event)
+{
+    const auto mapped_code = map_mouse_button_code(button_event.button);
+    if (!mapped_code) {
+        return;
+    }
+
+    if (button_event.type == SDL_MOUSEBUTTONDOWN) {
+        press_key(*mapped_code);
+    } else if (button_event.type == SDL_MOUSEBUTTONUP) {
+        release_key(*mapped_code);
+    }
+}
+
+void KeyboardInputProvider::handle_mouse_wheel_event(const SDL_MouseWheelEvent& wheel_event)
+{
+    int vertical = wheel_event.y;
+    if (wheel_event.direction == SDL_MOUSEWHEEL_FLIPPED) {
+        vertical = -vertical;
+    }
+
+    if (vertical > 0) {
+        pulse_key(kScrollUpCode);
+    } else if (vertical < 0) {
+        pulse_key(kScrollDownCode);
     }
 }
 
@@ -153,7 +178,7 @@ void KeyboardInputProvider::reset_keyboard_state()
 {
     for (auto& state : key_state_) {
         state.down = false;
-        state.toggle = false;
+        state.pending_press = false;
         state.seconds_since_change = kKeyboardMaxTime;
     }
     pixels_.fill(0);
@@ -257,6 +282,21 @@ std::optional<int> KeyboardInputProvider::map_dom_keycode(SDL_Keycode key_code) 
     return std::nullopt;
 }
 
+std::optional<int> KeyboardInputProvider::map_mouse_button_code(uint8_t sdl_button) const
+{
+    switch (sdl_button) {
+        case SDL_BUTTON_LEFT:
+            return kButtonLeftCode;
+        case SDL_BUTTON_MIDDLE:
+            return kButtonMiddleCode;
+        case SDL_BUTTON_RIGHT:
+            return kButtonRightCode;
+        default:
+            break;
+    }
+    return std::nullopt;
+}
+
 bool KeyboardInputProvider::write_keyboard_pixel(int row, int column, uint8_t value)
 {
     const int index = row * kKeyboardTextureWidth + column;
@@ -266,6 +306,51 @@ bool KeyboardInputProvider::write_keyboard_pixel(int row, int column, uint8_t va
     }
     current = value;
     return true;
+}
+
+void KeyboardInputProvider::press_key(int key_index)
+{
+    if (key_index < 0 || key_index >= kKeyboardTextureWidth) {
+        return;
+    }
+
+    KeyState& state = key_state_[static_cast<std::size_t>(key_index)];
+    if (state.down) {
+        return;
+    }
+
+    state.down = true;
+    state.pending_press = true;
+    state.seconds_since_change = 0.0F;
+    texture_dirty_ = true;
+}
+
+void KeyboardInputProvider::release_key(int key_index)
+{
+    if (key_index < 0 || key_index >= kKeyboardTextureWidth) {
+        return;
+    }
+
+    KeyState& state = key_state_[static_cast<std::size_t>(key_index)];
+    if (!state.down) {
+        return;
+    }
+
+    state.down = false;
+    state.seconds_since_change = 0.0F;
+    texture_dirty_ = true;
+}
+
+void KeyboardInputProvider::pulse_key(int key_index)
+{
+    if (key_index < 0 || key_index >= kKeyboardTextureWidth) {
+        return;
+    }
+
+    KeyState& state = key_state_[static_cast<std::size_t>(key_index)];
+    state.pending_press = true;
+    state.seconds_since_change = 0.0F;
+    texture_dirty_ = true;
 }
 
 } // namespace shaderdock::bindings

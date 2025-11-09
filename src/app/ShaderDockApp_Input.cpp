@@ -35,6 +35,9 @@ void ShaderDockApp::process_event(const SDL_Event& event)
                 mouse_click_x_ = mouse_current_x_;
                 mouse_click_y_ = mouse_current_y_;
             }
+            if (keyboard_input_provider_) {
+                keyboard_input_provider_->handle_mouse_button_event(event.button);
+            }
             break;
         case SDL_MOUSEBUTTONUP:
             if (event.button.button == SDL_BUTTON_LEFT) {
@@ -45,9 +48,17 @@ void ShaderDockApp::process_event(const SDL_Event& event)
                 mouse_tap_pending_ = !mouse_dragged_;
                 mouse_dragged_ = false;
             }
+            if (keyboard_input_provider_) {
+                keyboard_input_provider_->handle_mouse_button_event(event.button);
+            }
             break;
         case SDL_MOUSEMOTION:
             update_mouse_position(event.motion.x, event.motion.y);
+            break;
+        case SDL_MOUSEWHEEL:
+            if (keyboard_input_provider_) {
+                keyboard_input_provider_->handle_mouse_wheel_event(event.wheel);
+            }
             break;
         case SDL_WINDOWEVENT:
             if (event.window.event == SDL_WINDOWEVENT_RESIZED ||

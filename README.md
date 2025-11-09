@@ -131,7 +131,7 @@ When a manifest requests a `keyboard` input, ShaderDock synthesizes a 256×3 `GL
 | Row | Meaning | Value range |
 | --- | --- | --- |
 | 0 | Current key state (`1 = pressed`, `0 = released`). | 0 or 1 |
-| 1 | Toggle bit (flips on every key press; useful for edge detection). | 0 or 1 |
+| 1 | Press pulse (`1` only on the first frame of a fresh key press). | 0 or 1 |
 | 2 | Time since the last state change (press or release), normalized to `[0, 1]` over 0–600 s. | 0–1 |
 
 The X axis corresponds to DOM key codes (0–255). Demos typically query it via either `texelFetch(iChannelY, ivec2(keyCode, row), 0)` or `texture(iChannelY, vec2((keyCode+0.5)/256.0, rowCenter))`.
