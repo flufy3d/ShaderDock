@@ -103,6 +103,14 @@ const vec3 SUN_DIRECTION = normalize(vec3(1.0));
 #define inputTexture(coord) texture(iChannel0, (coord) / iResolution.xy)
 #define inputTextureState(i) texture(iChannel0, vec2(float(i) + 0.5, 0.5) / iResolution.xy)
 
+vec4 fetchQuantizedTexel(sampler2D channel, vec2 coord)
+{
+    ivec2 size = textureSize(channel, 0);
+    ivec2 icoord = clamp(ivec2(coord), ivec2(0), size - ivec2(1));
+    vec4 texel = texelFetch(channel, icoord, 0);
+    return floor(texel * 255.0 + 0.5) / 255.0;
+}
+
 // --- Serialization ---
 
 // Buffer definition (broken into [whole].[fraction] parts):

@@ -3,6 +3,27 @@
 // Buffer C - Compose materials and outline
 // Inputs: Buffer B
 
+float getSoftShadow(vec2 coord)
+{
+    const vec2 offsets[5] = vec2[](
+        vec2(0.0),
+        vec2x1,
+        -vec2x1,
+        vec2y1,
+        -vec2y1);
+    const float weights[5] = float[](4.0, 1.0, 1.0, 1.0, 1.0);
+
+    float sum = 0.0;
+    float total = 0.0;
+    for (int i = 0; i < 5; ++i)
+    {
+        float w = weights[i];
+        sum += w * getShadowComponent(fetchQuantizedTexel(iChannel0, coord + offsets[i]));
+        total += w;
+    }
+    return sum / max(total, 1.0);
+}
+
 const vec3[] skyColor = vec3[](vec3(0.52, 0.78, 0.82), vec3(0.64, 0.9, 1.0), vec3(0.3, 0.6, 1.0));
 const vec3[] fogColor = vec3[](vec3(1.0), vec3(0.9, 0.95, 1.0), vec3(1.0, 0.8, 1.0));
 const vec3[] grassColor1 = vec3[](vec3(1.0), vec3(0.84, 1.0, 0.52), vec3(1.0, 0.8, 1.5));
@@ -174,7 +195,7 @@ vec2 getOutline(vec2 fragCoord)
     for (int i = 0; i < 9; i++)
     {
         vec2 offset = vec2(float(i % 3), float(i / 3)) + vec2(-1.0);
-        vec4 t = inputTexture(fragCoord + offset);
+        vec4 t = fetchQuantizedTexel(iChannel0, fragCoord + offset);
 
         float depth = min(deserializeDepth(getDepthComponent(t)) / 200.0, 1.0); // MAX_DIST
         minDepth = min(minDepth, depth);
@@ -339,6 +360,12 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
             // shadow
             bool isGrass = abs(materialIndex - MATERIAL_GRASS) < 0.1;
             float shadow = getShadowComponent(t);
+            bool softenShadow = materialIndex >= MATERIAL_SKIN && materialIndex < MATERIAL_SKIN + 1.0;
+            if (softenShadow)
+            {
+                float softShadow = getSoftShadow(fragCoord);
+                shadow = mix(shadow, softShadow, 0.6);
+            }
             shadow = isGrass ? shadow : (1.0 - (1.0 - shadow) * smoothstep(0.1, 0.2, dot(SUN_DIRECTION, n)));
 
             shadow = abs(materialIndex - MATERIAL_SKY) > 0.0 && abs(materialIndex - MATERIAL_MOUNTAIN) > 0.0 ? shadow : 0.0;

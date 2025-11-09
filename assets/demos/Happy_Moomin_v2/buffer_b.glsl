@@ -3,31 +3,11 @@
 // Buffer B - Outline
 // Inputs: Buffer A
 
-// 先取消 common.glsl 里原来的定义
-#undef inputTexture
-
-// 使用 texelFetch + 像素坐标 + 8bit 量化
-vec4 inputTextureQuantized(vec2 coord)
-{
-    ivec2 icoord = ivec2(coord);
-    ivec2 size  = textureSize(iChannel0, 0);
-
-    // 防止越界，等价于 CLAMP_TO_EDGE
-    icoord = clamp(icoord, ivec2(0), size - ivec2(1));
-
-    vec4 t = texelFetch(iChannel0, icoord, 0);
-    t = floor(t * 255.0 + 0.5) / 255.0;  // 8bit 量化
-    return t;
-}
-
-// 重新定义 inputTexture
-#define inputTexture(coord) inputTextureQuantized(coord)
-
-// 一些 epsilon，避免太敏感
-const float DEPTH_EPS     = 1e-3;
-const float GRAD_EPS      = 1e-3;
-const float MATERIAL_EPS  = 0.5;   // 材质 index 是整数，>0.5 基本就是不同
-const float EDGE_EPS      = 0.5;
+const float DEPTH_EPS = 1e-3;
+const float GRAD_EPS = 1e-3;
+const float MATERIAL_EPS = 0.5;
+const float EDGE_EPS = 0.5;
+const float INNER_GRAD_EPS = 0.02;
 
 vec3 getPosition(vec2 coord, vec4 t)
 {
@@ -66,7 +46,7 @@ vec2 getDepthGradient(vec2 coord)
     for (int i = 0; i < 9; i++)
     {
         vec2 offset = vec2(float(i % 3), float(i / 3)) + vec2(-1.0);
-        float d = deserializeDepth(getDepthComponent(inputTexture(coord + offset))) / MAX_DIST;
+        float d = deserializeDepth(getDepthComponent(fetchQuantizedTexel(iChannel0, coord + offset))) / MAX_DIST;
         g.x += d * offset.x * (2.0 - abs(offset.y));
         g.y += d * offset.y * (2.0 - abs(offset.x));
     }
@@ -80,83 +60,69 @@ float getOutline(vec2 coord)
 
     float f, fx1, fx2, fy1, fy2;
 
-    float material = getMaterialIndexComponent(inputTexture(coord));
+    vec4 center = fetchQuantizedTexel(iChannel0, coord);
+    float material = getMaterialIndexComponent(center);
 
     // depth gradient
-    f   = length(getDepthGradient(coord));
+    f =   length(getDepthGradient(coord));
     fx1 = length(getDepthGradient(coord - vec2x1));
     fx2 = length(getDepthGradient(coord + vec2x1));
     fy1 = length(getDepthGradient(coord - vec2y1));
     fy2 = length(getDepthGradient(coord + vec2y1));
 
     // perimeter outline based on depth
-    // 原来是 f >= 0.1，这里保持，但仍受 DEPTH_EPS 影响
     float result = f >= 0.1 + DEPTH_EPS ? 1.0 : 0.0;
 
     // inner outline based on depth
-    // 原来：4.0 * f >= 1.05 * (fx1 + fx2 + fy1 + fy2 + 0.000005)
-    // 稍微加一点 epsilon，避免噪点
-    float sumGrad = fx1 + fx2 + fy1 + fy2;
-    result += 4.0 * f >= 1.05 * (sumGrad + 0.000005) + GRAD_EPS ? 1.0 : 0.0;
+    float neighborGrad = 0.25 * (fx1 + fx2 + fy1 + fy2);
+    bool hasInner = 4.0 * f >= 1.05 * (fx1 + fx2 + fy1 + fy2 + 0.000005) + GRAD_EPS;
+    hasInner = hasInner && f - neighborGrad > INNER_GRAD_EPS;
+    result += hasInner ? 1.0 : 0.0;
 
     // remove outline for the same material
     result = materialHasInnerLines(material) ? result : 0.0;
 
-    vec4 t  = inputTexture(coord);
-    vec4 tx1 = inputTexture(coord - vec2x1);
-    vec4 tx2 = inputTexture(coord + vec2x1);
-    vec4 ty1 = inputTexture(coord - vec2y1);
-    vec4 ty2 = inputTexture(coord + vec2y1);
+    vec4 t = center;
+    vec4 tx1 = fetchQuantizedTexel(iChannel0, coord - vec2x1);
+    vec4 tx2 = fetchQuantizedTexel(iChannel0, coord + vec2x1);
+    vec4 ty1 = fetchQuantizedTexel(iChannel0, coord - vec2y1);
+    vec4 ty2 = fetchQuantizedTexel(iChannel0, coord + vec2y1);
 
     // material difference
-    f   = material;
+    f = material;
     fx1 = getMaterialIndexComponent(tx1);
     fx2 = getMaterialIndexComponent(tx2);
     fy1 = getMaterialIndexComponent(ty1);
     fy2 = getMaterialIndexComponent(ty2);
 
     // perimeter outline based on material difference
-    // 原来是 “总差值 > 0.0”，现在给个 MATERIAL_EPS
-    float matDiff =
-        abs(f - fx1) +
-        abs(f - fx2) +
-        abs(f - fy1) +
-        abs(f - fy2);
-
+    float matDiff = abs(f - fx1) + abs(f - fx2) + abs(f - fy1) + abs(f - fy2);
     result += matDiff > MATERIAL_EPS ? 1.0 : 0.0;
 
     // edge group
     float edge = getEdgeGroupComponent(t);
-    f   = edge;
+    f = edge;
     fx1 = getEdgeGroupComponent(tx1);
     fx2 = getEdgeGroupComponent(tx2);
     fy1 = getEdgeGroupComponent(ty1);
     fy2 = getEdgeGroupComponent(ty2);
-
-    // exclude edge group 0，并给差值加 EDGE_EPS
     bool edgeDifferent =
         (fx1 > EDGE_EPS && abs(f - fx1) > EDGE_EPS) ||
         (fx2 > EDGE_EPS && abs(f - fx2) > EDGE_EPS) ||
         (fy1 > EDGE_EPS && abs(f - fy1) > EDGE_EPS) ||
         (fy2 > EDGE_EPS && abs(f - fy2) > EDGE_EPS);
-
     result += (f > EDGE_EPS && edgeDifferent) ? 1.0 : 0.0;
 
     // tint difference
     float tint = getTintIndexComponent(t);
-    f   = tint;
+    f = tint;
     fx1 = getTintIndexComponent(tx1);
     fx2 = getTintIndexComponent(tx2);
     fy1 = getTintIndexComponent(ty1);
     fy2 = getTintIndexComponent(ty2);
 
     // perimeter outline based on tint difference (excluding reflection on next slot)
-    // 原逻辑保留：差值大于 1.0 才算
-    result +=
-        (abs(f - fx1) > 1.0) ||
-        (abs(f - fx2) > 1.0) ||
-        (abs(f - fy1) > 1.0) ||
-        (abs(f - fy2) > 1.0) ? 1.0 : 0.0;
+    result += abs(f - fx1) > 1.0 || abs(f - fx2) > 1.0 || abs(f - fy1) > 1.0 || abs(f - fy2) > 1.0 ? 1.0 : 0.0;
 
     result = min(result, 1.0);
 
