@@ -1,0 +1,4 @@
+[TEXTURES]
+[
+  "https://www.shadertoy.com/media/a/3871e838723dd6b166e490664eead8ec60aedd6b8d95bc8e2fe3f882f0fd90f0.jpg"
+].forEach(url => window.open(url));

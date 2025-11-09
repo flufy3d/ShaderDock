@@ -1,0 +1,138 @@
+{
+  "ver": "0.1",
+  "info": {
+    "id": "mtSSDd",
+    "name": "Happy Moomin (v2)",
+    "username": "ytt",
+    "description": "A more accurate Moomin model",
+    "tags": [
+      "grass",
+      "quaternion",
+      "outline",
+      "anime",
+      "moomin"
+    ],
+    "likes": 54,
+    "published": 1
+  },
+  "renderpass": [
+    {
+      "name": "Image",
+      "type": "image",
+      "source": "image.glsl",
+      "inputs": [
+        {
+          "id": "4dXGzr",
+          "type": "texture",
+          "channel": 1,
+          "filepath": "/textures/08b42b43ae9d3c0605da11d0eac86618ea888e62cdd9518ee8b9097488b31560.png",
+          "sampler": {
+            "filter": "mipmap",
+            "wrap": "repeat",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "4sXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "linear",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    },
+    {
+      "name": "Common",
+      "type": "common",
+      "source": "common.glsl",
+      "inputs": []
+    },
+    {
+      "name": "Buffer A",
+      "type": "buffer",
+      "source": "buffer_a.glsl",
+      "inputs": [
+        {
+          "id": "4dXGRr",
+          "type": "keyboard",
+          "channel": 1,
+          "filepath": "/presets/tex00.jpg",
+          "sampler": {
+            "filter": "linear",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
+          "id": "4dXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "linear",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    },
+    {
+      "name": "Buffer B",
+      "type": "buffer",
+      "source": "buffer_b.glsl",
+      "inputs": [
+        {
+          "id": "4dXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "linear",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    },
+    {
+      "name": "Buffer C",
+      "type": "buffer",
+      "source": "buffer_c.glsl",
+      "inputs": [
+        {
+          "id": "XsXGR8",
+          "type": "buffer",
+          "channel": 0,
+          "filepath": null,
+          "sampler": {
+            "filter": "linear",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    }
+  ]
+}

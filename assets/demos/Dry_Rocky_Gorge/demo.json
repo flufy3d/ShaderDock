@@ -1,0 +1,42 @@
+{
+  "ver": "0.1",
+  "info": {
+    "id": "lslfRN",
+    "name": "Dry Rocky Gorge",
+    "username": "Shane",
+    "description": "A simple canyon\\gorge fly-through. Not much different to the many other examples on here, but fun to make.",
+    "tags": [
+      "noise",
+      "terrain",
+      "clouds",
+      "flythrough",
+      "canyon",
+      "gorge"
+    ],
+    "likes": 135,
+    "published": 3
+  },
+  "renderpass": [
+    {
+      "name": "Image",
+      "type": "image",
+      "source": "image.glsl",
+      "inputs": [
+        {
+          "id": "4df3Rr",
+          "type": "texture",
+          "channel": 0,
+          "filepath": "/textures/3871e838723dd6b166e490664eead8ec60aedd6b8d95bc8e2fe3f882f0fd90f0.jpg",
+          "sampler": {
+            "filter": "mipmap",
+            "wrap": "repeat",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        }
+      ]
+    }
+  ]
+}
