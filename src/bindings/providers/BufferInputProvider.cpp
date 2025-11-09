@@ -35,7 +35,7 @@ std::unique_ptr<PassInputBinding> BufferInputProvider::create_binding(const mani
         return nullptr;
     }
 
-    return std::make_unique<BufferInputBinding>(input.channel, &it->second);
+    return std::make_unique<BufferInputBinding>(input.channel, &it->second, input.sampler);
 }
 
 } // namespace shaderdock::bindings
