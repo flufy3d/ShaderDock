@@ -57,10 +57,10 @@ void KeyboardInputProvider::update(float delta_seconds)
         const uint8_t down_value = state.down ? 255 : 0;
         modified |= write_keyboard_pixel(0, key, down_value);
 
-        const uint8_t press_value = state.pending_press ? 255 : 0;
+        const uint8_t press_value = state.press_latched ? 255 : 0;
         modified |= write_keyboard_pixel(1, key, press_value);
-        if (state.pending_press) {
-            state.pending_press = false;
+        if (state.press_latched) {
+            state.press_latched = false;
         }
 
         const float normalized_time = state.seconds_since_change / kKeyboardMaxTime;
@@ -90,8 +90,8 @@ void KeyboardInputProvider::update(float delta_seconds)
 
 void KeyboardInputProvider::handle_key_event(const SDL_KeyboardEvent& key_event)
 {
-    const auto mapped_code = map_dom_keycode(key_event.keysym.sym);
-    if (!mapped_code) {
+    const auto mapped_codes = map_dom_keycodes(key_event.keysym.sym);
+    if (mapped_codes.empty()) {
         return;
     }
 
@@ -99,9 +99,13 @@ void KeyboardInputProvider::handle_key_event(const SDL_KeyboardEvent& key_event)
         if (key_event.repeat != 0) {
             return;
         }
-        press_key(*mapped_code);
+        for (int code : mapped_codes) {
+            press_key(code);
+        }
     } else if (key_event.type == SDL_KEYUP) {
-        release_key(*mapped_code);
+        for (int code : mapped_codes) {
+            release_key(code);
+        }
     }
 }
 
@@ -178,97 +182,148 @@ void KeyboardInputProvider::reset_keyboard_state()
 {
     for (auto& state : key_state_) {
         state.down = false;
-        state.pending_press = false;
+        state.press_latched = false;
         state.seconds_since_change = kKeyboardMaxTime;
     }
     pixels_.fill(0);
     texture_dirty_ = true;
 }
 
-std::optional<int> KeyboardInputProvider::map_dom_keycode(SDL_Keycode key_code) const
+std::vector<int> KeyboardInputProvider::map_dom_keycodes(SDL_Keycode key_code) const
 {
+    std::vector<int> codes;
+    codes.reserve(3);
+
     if (key_code >= SDLK_a && key_code <= SDLK_z) {
-        return 'A' + static_cast<int>(key_code - SDLK_a);
+        codes.push_back('A' + static_cast<int>(key_code - SDLK_a));
+        return codes;
     }
     if (key_code >= SDLK_0 && key_code <= SDLK_9) {
-        return '0' + static_cast<int>(key_code - SDLK_0);
+        codes.push_back('0' + static_cast<int>(key_code - SDLK_0));
+        return codes;
     }
     if (key_code >= SDLK_KP_0 && key_code <= SDLK_KP_9) {
-        return '0' + static_cast<int>(key_code - SDLK_KP_0);
+        codes.push_back('0' + static_cast<int>(key_code - SDLK_KP_0));
+        return codes;
     }
     if (key_code >= SDLK_F1 && key_code <= SDLK_F12) {
-        return 112 + static_cast<int>(key_code - SDLK_F1);
+        codes.push_back(112 + static_cast<int>(key_code - SDLK_F1));
+        return codes;
     }
 
     switch (key_code) {
         case SDLK_SPACE:
-            return 32;
+            codes.push_back(32);
+            break;
         case SDLK_RETURN:
         case SDLK_RETURN2:
         case SDLK_KP_ENTER:
-            return 13;
+            codes.push_back(13);
+            break;
         case SDLK_ESCAPE:
-            return 27;
+            codes.push_back(27);
+            break;
         case SDLK_BACKSPACE:
-            return 8;
+            codes.push_back(8);
+            break;
         case SDLK_TAB:
-            return 9;
+            codes.push_back(9);
+            break;
         case SDLK_DELETE:
-            return 46;
+            codes.push_back(46);
+            break;
         case SDLK_INSERT:
-            return 45;
+            codes.push_back(45);
+            break;
         case SDLK_HOME:
-            return 36;
+            codes.push_back(36);
+            break;
         case SDLK_END:
-            return 35;
+            codes.push_back(35);
+            break;
         case SDLK_PAGEUP:
-            return 33;
+            codes.push_back(33);
+            break;
         case SDLK_PAGEDOWN:
-            return 34;
+            codes.push_back(34);
+            break;
         case SDLK_LEFT:
-            return 37;
+            codes.push_back(37);
+            break;
         case SDLK_UP:
-            return 38;
+            codes.push_back(38);
+            break;
         case SDLK_RIGHT:
-            return 39;
+            codes.push_back(39);
+            break;
         case SDLK_DOWN:
-            return 40;
+            codes.push_back(40);
+            break;
         case SDLK_LSHIFT:
         case SDLK_RSHIFT:
-            return 16;
+            codes.push_back(16);
+            break;
         case SDLK_LCTRL:
         case SDLK_RCTRL:
-            return 17;
+            codes.push_back(17);
+            break;
         case SDLK_LALT:
         case SDLK_RALT:
-            return 18;
+            codes.push_back(18);
+            break;
         case SDLK_CAPSLOCK:
-            return 20;
+            codes.push_back(20);
+            break;
         case SDLK_LGUI:
         case SDLK_RGUI:
-            return 91;
+            codes.push_back(91);
+            break;
         case SDLK_SEMICOLON:
-            return ';';
+            codes.push_back(';');
+            break;
         case SDLK_COMMA:
-            return ',';
+            codes.push_back(',');
+            break;
         case SDLK_PERIOD:
-            return '.';
+            codes.push_back('.');
+            break;
         case SDLK_SLASH:
-            return '/';
+            codes.push_back('/');
+            break;
         case SDLK_BACKSLASH:
-            return '\\';
+            codes.push_back('\\');
+            break;
         case SDLK_LEFTBRACKET:
-            return '[';
+            codes.push_back('[');
+            break;
         case SDLK_RIGHTBRACKET:
-            return ']';
+            codes.push_back(']');
+            break;
         case SDLK_MINUS:
-            return '-';
+            codes.push_back('-');
+            codes.push_back(173);
+            break;
         case SDLK_EQUALS:
-            return '=';
+            codes.push_back('=');
+            break;
+        case SDLK_KP_PLUS:
+            codes.push_back(107);
+            codes.push_back('+');
+            break;
+        case SDLK_KP_MINUS:
+            codes.push_back(109);
+            codes.push_back('-');
+            codes.push_back(173);
+            break;
         case SDLK_QUOTE:
-            return '\'';
+            codes.push_back('\'');
+            break;
         default:
             break;
+    }
+
+    if (!codes.empty()) {
+        return codes;
     }
 
     if (key_code >= 32 && key_code <= 126) {
@@ -276,10 +331,10 @@ std::optional<int> KeyboardInputProvider::map_dom_keycode(SDL_Keycode key_code) 
         if (std::isalpha(ch)) {
             ch = static_cast<unsigned char>(std::toupper(ch));
         }
-        return static_cast<int>(ch);
+        codes.push_back(static_cast<int>(ch));
     }
 
-    return std::nullopt;
+    return codes;
 }
 
 std::optional<int> KeyboardInputProvider::map_mouse_button_code(uint8_t sdl_button) const
@@ -320,7 +375,7 @@ void KeyboardInputProvider::press_key(int key_index)
     }
 
     state.down = true;
-    state.pending_press = true;
+    state.press_latched = true;
     state.seconds_since_change = 0.0F;
     texture_dirty_ = true;
 }
@@ -337,6 +392,7 @@ void KeyboardInputProvider::release_key(int key_index)
     }
 
     state.down = false;
+    state.press_latched = false;
     state.seconds_since_change = 0.0F;
     texture_dirty_ = true;
 }
@@ -348,7 +404,7 @@ void KeyboardInputProvider::pulse_key(int key_index)
     }
 
     KeyState& state = key_state_[static_cast<std::size_t>(key_index)];
-    state.pending_press = true;
+    state.press_latched = true;
     state.seconds_since_change = 0.0F;
     texture_dirty_ = true;
 }

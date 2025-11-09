@@ -3,6 +3,7 @@
 #include <array>
 #include <memory>
 #include <optional>
+#include <vector>
 
 #include <SDL.h>
 
@@ -28,7 +29,7 @@ public:
 private:
     struct KeyState {
         bool down = false;
-        bool pending_press = false;
+        bool press_latched = false;
         float seconds_since_change = 0.0F;
     };
 
@@ -38,7 +39,7 @@ private:
 
     bool ensure_keyboard_texture();
     void reset_keyboard_state();
-    std::optional<int> map_dom_keycode(SDL_Keycode key_code) const;
+    std::vector<int> map_dom_keycodes(SDL_Keycode key_code) const;
     std::optional<int> map_mouse_button_code(uint8_t sdl_button) const;
     bool write_keyboard_pixel(int row, int column, uint8_t value);
     void press_key(int key_index);
