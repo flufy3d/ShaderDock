@@ -83,13 +83,15 @@
           },
           "published": 1
         }
-      ]
+      ],
+      "outputs": []
     },
     {
       "name": "Common",
       "type": "common",
       "source": "common.glsl",
-      "inputs": []
+      "inputs": [],
+      "outputs": []
     },
     {
       "name": "Buffer A",
@@ -109,6 +111,12 @@
             "internal": "byte"
           },
           "published": 1
+        }
+      ],
+      "outputs": [
+        {
+          "id": "4dXGR8",
+          "channel": 0
         }
       ]
     },
@@ -144,6 +152,12 @@
             "internal": "byte"
           },
           "published": 1
+        }
+      ],
+      "outputs": [
+        {
+          "id": "XsXGR8",
+          "channel": 0
         }
       ]
     },
@@ -194,6 +208,12 @@
           },
           "published": 1
         }
+      ],
+      "outputs": [
+        {
+          "id": "4sXGR8",
+          "channel": 0
+        }
       ]
     },
     {
@@ -228,6 +248,12 @@
             "internal": "byte"
           },
           "published": 1
+        }
+      ],
+      "outputs": [
+        {
+          "id": "XdfGR8",
+          "channel": 0
         }
       ]
     }

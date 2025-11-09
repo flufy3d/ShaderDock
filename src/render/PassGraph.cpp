@@ -2,11 +2,9 @@
 
 #include <SDL.h>
 
-#include <algorithm>
-#include <cctype>
 #include <queue>
 #include <string>
-#include <unordered_set>
+#include <unordered_map>
 
 namespace shaderdock::render {
 
@@ -23,31 +21,49 @@ bool IsExecutablePass(const manifest::RenderPass& pass)
         pass.type == manifest::RenderPassType::kImage;
 }
 
-std::string GenerateSyntheticBufferId(
+bool ValidateBufferOutputs(
     const manifest::RenderPass& pass,
-    const std::unordered_set<std::string>& existing_ids)
+    std::unordered_map<std::string, const manifest::RenderPass*>& buffer_sources,
+    std::unordered_map<const manifest::RenderPass*, std::string>& pass_to_buffer_id)
 {
-    std::string base = pass.name.empty() ? "buffer" : pass.name;
-    std::string normalized;
-    normalized.reserve(base.size());
-    for (char c : base) {
-        unsigned char uc = static_cast<unsigned char>(c);
-        if (std::isalnum(uc)) {
-            normalized.push_back(static_cast<char>(std::tolower(uc)));
-        } else if (uc == ' ' || uc == '-' || uc == '_') {
-            normalized.push_back('_');
+    std::string declared_id;
+    for (const auto& output : pass.outputs) {
+        if (output.channel != 0) {
+            SDL_Log(
+                "PassGraph: buffer pass %s declares unsupported output channel %d.",
+                pass.name.c_str(),
+                output.channel);
+            return false;
+        }
+        if (output.id.empty()) {
+            SDL_Log(
+                "PassGraph: buffer pass %s declares an empty output id.",
+                pass.name.c_str());
+            return false;
+        }
+        if (!declared_id.empty()) {
+            SDL_Log(
+                "PassGraph: buffer pass %s declares multiple outputs; only one is supported.",
+                pass.name.c_str());
+            return false;
+        }
+        declared_id = output.id;
+        if (!buffer_sources.emplace(output.id, &pass).second) {
+            SDL_Log(
+                "PassGraph: duplicate buffer output id '%s' declared by pass %s.",
+                output.id.c_str(),
+                pass.name.c_str());
+            return false;
         }
     }
-    if (normalized.empty()) {
-        normalized = "buffer";
+
+    if (declared_id.empty()) {
+        SDL_Log("PassGraph: buffer pass %s is missing an output declaration.", pass.name.c_str());
+        return false;
     }
 
-    std::string candidate = normalized;
-    int suffix = 1;
-    while (existing_ids.count(candidate) > 0) {
-        candidate = normalized + "_" + std::to_string(suffix++);
-    }
-    return candidate;
+    pass_to_buffer_id.emplace(&pass, declared_id);
+    return true;
 }
 
 } // namespace
@@ -57,61 +73,21 @@ bool BuildPassExecutionPlan(const manifest::DemoManifest& manifest, PassExecutio
     out_plan = PassExecutionPlan{};
 
     std::vector<const manifest::RenderPass*> executable_passes;
-    std::vector<const manifest::RenderPass*> buffer_passes;
     executable_passes.reserve(manifest.passes.size());
 
-    std::vector<std::string> all_buffer_ids;
-    std::unordered_set<std::string> unique_ids;
+    std::unordered_map<const manifest::RenderPass*, std::string> pass_to_buffer_id;
+    std::unordered_map<std::string, const manifest::RenderPass*> buffer_id_to_pass;
+    pass_to_buffer_id.reserve(manifest.passes.size());
 
     for (const auto& pass : manifest.passes) {
         if (IsBufferPass(pass)) {
-            buffer_passes.push_back(&pass);
+            if (!ValidateBufferOutputs(pass, buffer_id_to_pass, pass_to_buffer_id)) {
+                return false;
+            }
         }
         if (IsExecutablePass(pass)) {
             executable_passes.push_back(&pass);
         }
-        for (const auto& input : pass.inputs) {
-            if (input.type == manifest::PassInputType::kBuffer && !input.id.empty()) {
-                if (unique_ids.insert(input.id).second) {
-                    all_buffer_ids.push_back(input.id);
-                }
-            }
-        }
-    }
-
-    std::unordered_map<const manifest::RenderPass*, std::string> pass_to_buffer_id;
-    std::unordered_map<std::string, const manifest::RenderPass*> buffer_id_to_pass;
-    std::unordered_set<std::string> assigned_ids;
-    assigned_ids.reserve(buffer_passes.size());
-
-    for (const manifest::RenderPass* pass : buffer_passes) {
-        std::string chosen_id;
-        for (const auto& input : pass->inputs) {
-            if (input.type != manifest::PassInputType::kBuffer || input.id.empty()) {
-                continue;
-            }
-            if (assigned_ids.count(input.id) == 0) {
-                chosen_id = input.id;
-                break;
-            }
-        }
-
-        if (chosen_id.empty()) {
-            for (const auto& candidate : all_buffer_ids) {
-                if (assigned_ids.count(candidate) == 0) {
-                    chosen_id = candidate;
-                    break;
-                }
-            }
-        }
-
-        if (chosen_id.empty()) {
-            chosen_id = GenerateSyntheticBufferId(*pass, assigned_ids);
-        }
-
-        assigned_ids.insert(chosen_id);
-        pass_to_buffer_id.emplace(pass, chosen_id);
-        buffer_id_to_pass.emplace(chosen_id, pass);
     }
 
     if (executable_passes.empty()) {

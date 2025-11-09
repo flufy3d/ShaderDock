@@ -57,12 +57,18 @@ struct PassInput {
     SamplerDesc sampler;
 };
 
+struct PassOutput {
+    std::string id;
+    int channel = 0;
+};
+
 struct RenderPass {
     std::string name;
     RenderPassType type = RenderPassType::kUnknown;
     std::string source_file;
     std::filesystem::path source_path;
     std::vector<PassInput> inputs;
+    std::vector<PassOutput> outputs;
 };
 
 struct DemoInfo {

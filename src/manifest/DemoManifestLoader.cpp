@@ -326,6 +326,21 @@ std::optional<DemoManifest> DemoManifestLoader::load(const std::filesystem::path
             }
         }
 
+        const Json::Value& outputs = pass_json["outputs"];
+        if (outputs.isArray()) {
+            pass.outputs.reserve(outputs.size());
+            for (const Json::Value& output_json : outputs) {
+                if (!output_json.isObject()) {
+                    continue;
+                }
+
+                PassOutput output;
+                output.id = output_json.get("id", "").asString();
+                output.channel = output_json.get("channel", 0).asInt();
+                pass.outputs.emplace_back(std::move(output));
+            }
+        }
+
         manifest.passes.emplace_back(std::move(pass));
     }
 

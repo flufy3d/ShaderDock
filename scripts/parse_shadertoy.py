@@ -171,6 +171,7 @@ def process_shader(
             ensure_trailing_newline(shader_code), encoding="utf-8"
         )
 
+        # Inputs
         cleaned_inputs = []
         for input_entry in render_pass.get("inputs", []):
             resource_type = input_entry.get("type") or ""
@@ -188,12 +189,23 @@ def process_shader(
                 }
             )
 
+        # Outputs (for DAG construction)
+        cleaned_outputs = []
+        for output_entry in render_pass.get("outputs", []):
+            cleaned_outputs.append(
+                {
+                    "id": output_entry.get("id"),
+                    "channel": output_entry.get("channel"),
+                }
+            )
+
         cleaned["renderpass"].append(
             {
                 "name": render_pass.get("name"),
                 "type": render_pass.get("type"),
                 "source": filename,
                 "inputs": cleaned_inputs,
+                "outputs": cleaned_outputs,
             }
         )
     return cleaned

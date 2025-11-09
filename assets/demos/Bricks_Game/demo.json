@@ -51,7 +51,8 @@
           },
           "published": 1
         }
-      ]
+      ],
+      "outputs": []
     },
     {
       "name": "Buffer A",
@@ -85,6 +86,12 @@
             "internal": "byte"
           },
           "published": 1
+        }
+      ],
+      "outputs": [
+        {
+          "id": "4dXGR8",
+          "channel": 0
         }
       ]
     }

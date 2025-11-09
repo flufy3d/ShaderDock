@@ -62,7 +62,8 @@
           },
           "published": 1
         }
-      ]
+      ],
+      "outputs": []
     },
     {
       "name": "Buf A",
@@ -97,6 +98,12 @@
           },
           "published": 1
         }
+      ],
+      "outputs": [
+        {
+          "id": "4dXGR8",
+          "channel": 0
+        }
       ]
     },
     {
@@ -118,6 +125,12 @@
           },
           "published": 1
         }
+      ],
+      "outputs": [
+        {
+          "id": "XsXGR8",
+          "channel": 0
+        }
       ]
     },
     {
@@ -138,6 +151,12 @@
             "internal": "byte"
           },
           "published": 1
+        }
+      ],
+      "outputs": [
+        {
+          "id": "4sXGR8",
+          "channel": 0
         }
       ]
     }
