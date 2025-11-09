@@ -1816,7 +1816,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
         state.nextTarget = INITIAL_TARGET;
         state.nextTargetOffset = vec3(0.0);
         state.nextTheme = 1.0;
-        state.navigationMode = 2.0;
+        state.navigationMode = 1.0;
     }
 
     state.origin = state.nextOrigin;
