@@ -11,23 +11,9 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET sdl2)
 pkg_check_modules(JSONCPP REQUIRED IMPORTED_TARGET jsoncpp)
 
-set(SHADERDOCK_SOURCES
-    src/app/main.cpp
-    src/app/AppConfig.cpp
-    src/app/ShaderDockApp.cpp
-    src/render/FullscreenTriangle.cpp
-    src/render/GlLoader.cpp
-    src/render/PassGraph.cpp
-    src/render/PassInstance.cpp
-    src/render/PipelineTypes.cpp
-    src/render/RenderPipeline.cpp
-    src/render/ShaderProgram.cpp
-    src/resources/DemoManifest.cpp
-    src/resources/AssetIO.cpp
-    src/resources/DemoCatalog.cpp
-    src/resources/TextureLoader.cpp
-    src/resources/stb_image_impl.cpp
-    src/third_party/glad/src/glad.c
+file(GLOB_RECURSE SHADERDOCK_SOURCES CONFIGURE_DEPENDS
+    src/*.cpp
+    src/*.c
 )
 
 add_executable(${PROJECT_NAME} ${SHADERDOCK_SOURCES})
