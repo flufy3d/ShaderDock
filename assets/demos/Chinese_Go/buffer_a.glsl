@@ -147,6 +147,55 @@ bool isDead(ivec2 startPos, float color) {
     return true;
 }
 
+// Check if a stone placed at movePos would have liberties
+bool hasLibertiesAfterMove(ivec2 movePos, float color) {
+    ivec2 neighbors[4];
+    neighbors[0] = movePos + ivec2(1, 0);
+    neighbors[1] = movePos + ivec2(-1, 0);
+    neighbors[2] = movePos + ivec2(0, 1);
+    neighbors[3] = movePos + ivec2(0, -1);
+    
+    for(int i=0; i<4; i++) {
+        ivec2 n = neighbors[i];
+        if (!onBoard(n)) continue;
+        float s = getStone(n);
+        if (s == EMPTY) return true;
+        if (s == color) {
+            // Friendly group must have > 1 liberty (since one is the current movePos)
+            if (getGroupInfo(n, color).liberties > 1) return true;
+        }
+    }
+    return false;
+}
+
+// Calculate how many stones would be captured by a move
+int getCaptureCount(ivec2 movePos, float color) {
+    int captured = 0;
+    float opponent = (color == BLACK) ? WHITE : BLACK;
+    ivec2 neighbors[4];
+    neighbors[0] = movePos + ivec2(1, 0);
+    neighbors[1] = movePos + ivec2(-1, 0);
+    neighbors[2] = movePos + ivec2(0, 1);
+    neighbors[3] = movePos + ivec2(0, -1);
+    
+    for(int i=0; i<4; i++) {
+        ivec2 n = neighbors[i];
+        if (!onBoard(n)) continue;
+        if (getStone(n) == opponent) {
+            GroupInfo gInfo = getGroupInfo(n, opponent);
+            if (gInfo.liberties == 1) {
+                captured += gInfo.stones;
+            }
+        }
+    }
+    return captured;
+}
+
+// Check if a move is suicide
+bool isSuicide(ivec2 movePos, float color) {
+    return getCaptureCount(movePos, color) == 0 && !hasLibertiesAfterMove(movePos, color);
+}
+
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     ivec2 iFragCoord = ivec2(fragCoord);
@@ -206,32 +255,11 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
                             return;
                         }
                         
-                        // Check if move creates a Ko (captures 1 stone, new stone has 1 liberty)
-                        int capturedCount = 0;
-                        vec2 potentialKo = vec2(-1.0);
+                        int capturedCount = getCaptureCount(boardPos, currentPlayer);
                         
-                        ivec2 neighbors[4];
-                        neighbors[0] = boardPos + ivec2(1, 0);
-                        neighbors[1] = boardPos + ivec2(-1, 0);
-                        neighbors[2] = boardPos + ivec2(0, 1);
-                        neighbors[3] = boardPos + ivec2(0, -1);
-                        
-                        float opponent = (currentPlayer == BLACK) ? WHITE : BLACK;
-                        
-                        for(int i=0; i<4; i++) {
-                            ivec2 n = neighbors[i];
-                            if (!onBoard(n)) continue;
-                            if (getStone(n) == opponent) {
-                                // Check if opponent group dies (if it has 1 liberty and that liberty is the move position)
-                                GroupInfo gInfo = getGroupInfo(n, opponent);
-                                
-                                if (gInfo.liberties == 1) {
-                                    capturedCount += gInfo.stones;
-                                    if (gInfo.stones == 1) {
-                                        potentialKo = vec2(n);
-                                    }
-                                }
-                            }
+                        // Suicide Check
+                        if (capturedCount == 0 && !hasLibertiesAfterMove(boardPos, currentPlayer)) {
+                            return;
                         }
                         
                         vec2 nextKo = vec2(-1.0);
@@ -240,6 +268,13 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
                             // Ko condition: captured 1 stone, new stone has 1 liberty (isolated)
                             bool hasFriendlyNeighbor = false;
                             int directLiberties = 0;
+                            
+                            ivec2 neighbors[4];
+                            neighbors[0] = boardPos + ivec2(1, 0);
+                            neighbors[1] = boardPos + ivec2(-1, 0);
+                            neighbors[2] = boardPos + ivec2(0, 1);
+                            neighbors[3] = boardPos + ivec2(0, -1);
+                            
                              for(int i=0; i<4; i++) {
                                 ivec2 n = neighbors[i];
                                 if (!onBoard(n)) continue;
@@ -249,11 +284,23 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
                             }
                             
                             if (!hasFriendlyNeighbor && directLiberties == 0) {
-                                nextKo = potentialKo;
+                                // Find the captured stone position for Ko
+                                float opponent = (currentPlayer == BLACK) ? WHITE : BLACK;
+                                for(int i=0; i<4; i++) {
+                                    ivec2 n = neighbors[i];
+                                    if (!onBoard(n)) continue;
+                                    if (getStone(n) == opponent) {
+                                        GroupInfo gInfo = getGroupInfo(n, opponent);
+                                        if (gInfo.liberties == 1 && gInfo.stones == 1) {
+                                            nextKo = vec2(n);
+                                            break;
+                                        }
+                                    }
+                                }
                             }
                         }
                         
-                        fragColor = vec4(opponent, PLAYING, nextKo);
+                        fragColor = vec4((currentPlayer == BLACK) ? WHITE : BLACK, PLAYING, nextKo);
                         return;
                     }
                 }
@@ -291,6 +338,11 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
                     if (getStone(movePos) == EMPTY) {
                         // Check Ko
                         if (koPos.x >= 0.0 && float(movePos.x) == koPos.x && float(movePos.y) == koPos.y) {
+                            return;
+                        }
+
+                        // Suicide Check
+                        if (isSuicide(movePos, currentPlayer)) {
                             return;
                         }
                         
