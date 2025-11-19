@@ -26,6 +26,127 @@ bool onBoard(ivec2 p) {
     return p.x >= 0 && p.x < BOARD_SIZE && p.y >= 0 && p.y < BOARD_SIZE;
 }
 
+// Structure to return group info
+struct GroupInfo {
+    int stones;
+    int liberties;
+};
+
+// Flood fill to count stones and liberties
+GroupInfo getGroupInfo(ivec2 startPos, float color) {
+    GroupInfo info;
+    info.stones = 0;
+    info.liberties = 0;
+    
+    ivec2 stack[60];
+    int stackTop = 0;
+    stack[stackTop++] = startPos;
+    
+    ivec2 visited[60];
+    int visitedCount = 0;
+    visited[visitedCount++] = startPos;
+    
+    // Track unique liberties (capped at 20) for Ko check
+    ivec2 liberties[20];
+    int libertyCount = 0;
+    
+    int safety = 0;
+    while(stackTop > 0 && safety < 100) {
+        safety++;
+        ivec2 p = stack[--stackTop];
+        info.stones++;
+        
+        ivec2 neighbors[4];
+        neighbors[0] = p + ivec2(1, 0);
+        neighbors[1] = p + ivec2(-1, 0);
+        neighbors[2] = p + ivec2(0, 1);
+        neighbors[3] = p + ivec2(0, -1);
+        
+        for(int i=0; i<4; i++) {
+            ivec2 n = neighbors[i];
+            if (!onBoard(n)) continue;
+            
+            float s = getStone(n);
+            if (s == EMPTY) {
+                // Check if already counted
+                bool known = false;
+                for(int k=0; k<20; k++) {
+                    if (k >= libertyCount) break;
+                    if (liberties[k] == n) {
+                        known = true;
+                        break;
+                    }
+                }
+                if (!known && libertyCount < 20) {
+                    liberties[libertyCount++] = n;
+                }
+            } else if (s == color) {
+                bool isVisited = false;
+                for(int j=0; j<60; j++) {
+                    if (j >= visitedCount) break;
+                    if (visited[j] == n) {
+                        isVisited = true;
+                        break;
+                    }
+                }
+                if (!isVisited && visitedCount < 60) {
+                    visited[visitedCount++] = n;
+                    if (stackTop < 60) stack[stackTop++] = n;
+                }
+            }
+        }
+    }
+    info.liberties = libertyCount;
+    return info;
+}
+
+// Simplified check for death (just need to know if liberties == 0)
+bool isDead(ivec2 startPos, float color) {
+    ivec2 stack[60];
+    int stackTop = 0;
+    stack[stackTop++] = startPos;
+    
+    ivec2 visited[60];
+    int visitedCount = 0;
+    visited[visitedCount++] = startPos;
+    
+    int safety = 0;
+    while(stackTop > 0 && safety < 100) {
+        safety++;
+        ivec2 p = stack[--stackTop];
+        
+        ivec2 neighbors[4];
+        neighbors[0] = p + ivec2(1, 0);
+        neighbors[1] = p + ivec2(-1, 0);
+        neighbors[2] = p + ivec2(0, 1);
+        neighbors[3] = p + ivec2(0, -1);
+        
+        for(int i=0; i<4; i++) {
+            ivec2 n = neighbors[i];
+            if (!onBoard(n)) continue;
+            
+            float s = getStone(n);
+            if (s == EMPTY) return false; // Found a liberty
+            
+            if (s == color) {
+                bool isVisited = false;
+                for(int j=0; j<60; j++) {
+                    if (j >= visitedCount) break;
+                    if (visited[j] == n) {
+                        isVisited = true;
+                        break;
+                    }
+                }
+                if (!isVisited && visitedCount < 60) {
+                    visited[visitedCount++] = n;
+                    if (stackTop < 60) stack[stackTop++] = n;
+                }
+            }
+        }
+    }
+    return true;
+}
+
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     ivec2 iFragCoord = ivec2(fragCoord);
@@ -34,7 +155,8 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     if (iFrame == 0) {
         fragColor = vec4(0.0);
         if (iFragCoord == ivec2(STATE_POS)) {
-            fragColor = vec4(BLACK, PLAYING, 0.0, 0.0); 
+            // .x = Current Player, .y = Game State, .zw = Ko Position (-1 if none)
+            fragColor = vec4(BLACK, PLAYING, -1.0, -1.0); 
         }
         return;
     }
@@ -46,9 +168,9 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     vec4 globalState = loadValue(STATE_POS);
     float currentPlayer = globalState.x;
     float gameState = globalState.y;
+    vec2 koPos = globalState.zw;
     
     if (gameState != PLAYING) {
-        // Allow reset?
         return;
     }
     
@@ -76,12 +198,63 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
                 vec2 gridUV = boardUV * (float(BOARD_SIZE) - 1.0);
                 ivec2 boardPos = ivec2(round(gridUV));
                 vec2 dist = abs(gridUV - vec2(boardPos));
-                if (length(dist) < 0.4) { 
-                    if (onBoard(boardPos)) {
-                        if (getStone(boardPos) == EMPTY) {
-                            fragColor = vec4((currentPlayer == BLACK) ? WHITE : BLACK, PLAYING, 0.0, 0.0);
+                
+                if (length(dist) < 0.4 && onBoard(boardPos)) {
+                    if (getStone(boardPos) == EMPTY) {
+                        // Check Ko Rule
+                        if (koPos.x >= 0.0 && float(boardPos.x) == koPos.x && float(boardPos.y) == koPos.y) {
                             return;
                         }
+                        
+                        // Check if move creates a Ko (captures 1 stone, new stone has 1 liberty)
+                        int capturedCount = 0;
+                        vec2 potentialKo = vec2(-1.0);
+                        
+                        ivec2 neighbors[4];
+                        neighbors[0] = boardPos + ivec2(1, 0);
+                        neighbors[1] = boardPos + ivec2(-1, 0);
+                        neighbors[2] = boardPos + ivec2(0, 1);
+                        neighbors[3] = boardPos + ivec2(0, -1);
+                        
+                        float opponent = (currentPlayer == BLACK) ? WHITE : BLACK;
+                        
+                        for(int i=0; i<4; i++) {
+                            ivec2 n = neighbors[i];
+                            if (!onBoard(n)) continue;
+                            if (getStone(n) == opponent) {
+                                // Check if opponent group dies (if it has 1 liberty and that liberty is the move position)
+                                GroupInfo gInfo = getGroupInfo(n, opponent);
+                                
+                                if (gInfo.liberties == 1) {
+                                    capturedCount += gInfo.stones;
+                                    if (gInfo.stones == 1) {
+                                        potentialKo = vec2(n);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        vec2 nextKo = vec2(-1.0);
+                        
+                        if (capturedCount == 1) {
+                            // Ko condition: captured 1 stone, new stone has 1 liberty (isolated)
+                            bool hasFriendlyNeighbor = false;
+                            int directLiberties = 0;
+                             for(int i=0; i<4; i++) {
+                                ivec2 n = neighbors[i];
+                                if (!onBoard(n)) continue;
+                                float s = getStone(n);
+                                if (s == currentPlayer) hasFriendlyNeighbor = true;
+                                if (s == EMPTY) directLiberties++;
+                            }
+                            
+                            if (!hasFriendlyNeighbor && directLiberties == 0) {
+                                nextKo = potentialKo;
+                            }
+                        }
+                        
+                        fragColor = vec4(opponent, PLAYING, nextKo);
+                        return;
                     }
                 }
             }
@@ -103,7 +276,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
             float boardSize = 0.9;
             vec2 boardUV = (uv + boardSize * 0.5) / boardSize;
             
-            // Resign Check
+             // Resign Check
             vec2 screenUV = iMouse.xy / iResolution.xy;
             if (screenUV.x > 0.85 && screenUV.y > 0.9) {
                 return;
@@ -114,8 +287,13 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
                 ivec2 movePos = ivec2(round(gridUV));
                 vec2 dist = abs(gridUV - vec2(movePos));
                 
-                if (length(dist) < 0.4) {
+                if (length(dist) < 0.4 && onBoard(movePos)) {
                     if (getStone(movePos) == EMPTY) {
+                        // Check Ko
+                        if (koPos.x >= 0.0 && float(movePos.x) == koPos.x && float(movePos.y) == koPos.y) {
+                            return;
+                        }
+                        
                         // 1. Place Stone
                         if (iFragCoord == movePos) {
                             fragColor = vec4(currentPlayer, 0.0, 1.0, 0.0);
@@ -124,62 +302,60 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
                         
                         // 2. Capture Logic
                         if (data.x != EMPTY && data.x != currentPlayer) {
-                             ivec2 startPos = iFragCoord;
-                             float myColor = data.x;
-                             
-                             ivec2 stack[60];
-                             int stackTop = 0;
-                             stack[stackTop++] = startPos;
-                             
-                             ivec2 visited[60];
-                             int visitedCount = 0;
-                             visited[visitedCount++] = startPos;
-                             
-                             bool foundLiberty = false;
-                             int safety = 0;
-                             
-                             while(stackTop > 0 && safety < 100) {
-                                 safety++;
-                                 ivec2 p = stack[--stackTop];
+                             // Check if stone dies (if it has 1 liberty and that liberty is the move position)
+                             GroupInfo info = getGroupInfo(iFragCoord, data.x);
+                             if (info.liberties == 1) {
+                                 // Verify if the single liberty is indeed the move position
+                                 bool connectedToMovePos = false;
                                  
-                                 ivec2 neighbors[4];
-                                 neighbors[0] = p + ivec2(1, 0);
-                                 neighbors[1] = p + ivec2(-1, 0);
-                                 neighbors[2] = p + ivec2(0, 1);
-                                 neighbors[3] = p + ivec2(0, -1);
+                                 ivec2 stack[60];
+                                 int stackTop = 0;
+                                 stack[stackTop++] = iFragCoord;
                                  
-                                 for(int i=0; i<4; i++) {
-                                     ivec2 n = neighbors[i];
-                                     if (!onBoard(n)) continue;
-                                     if (n == movePos) continue; 
+                                 ivec2 visited[60];
+                                 int visitedCount = 0;
+                                 visited[visitedCount++] = iFragCoord;
+                                 
+                                 int safety = 0;
+                                 while(stackTop > 0 && safety < 100) {
+                                     safety++;
+                                     ivec2 p = stack[--stackTop];
                                      
-                                     float s = getStone(n);
-                                     if (s == EMPTY) {
-                                         foundLiberty = true;
-                                         break;
+                                     if (abs(p.x - movePos.x) + abs(p.y - movePos.y) == 1) {
+                                         connectedToMovePos = true;
                                      }
                                      
-                                     if (s == myColor) {
-                                         bool isVisited = false;
-                                         for(int j=0; j<60; j++) {
-                                             if (j >= visitedCount) break;
-                                             if (visited[j] == n) {
-                                                 isVisited = true;
-                                                 break;
+                                     ivec2 neighbors[4];
+                                     neighbors[0] = p + ivec2(1, 0);
+                                     neighbors[1] = p + ivec2(-1, 0);
+                                     neighbors[2] = p + ivec2(0, 1);
+                                     neighbors[3] = p + ivec2(0, -1);
+                                     
+                                     for(int i=0; i<4; i++) {
+                                         ivec2 n = neighbors[i];
+                                         if (!onBoard(n)) continue;
+                                         if (getStone(n) == data.x) {
+                                             bool isVisited = false;
+                                             for(int j=0; j<60; j++) {
+                                                 if (j >= visitedCount) break;
+                                                 if (visited[j] == n) {
+                                                     isVisited = true;
+                                                     break;
+                                                 }
                                              }
-                                         }
-                                         if (!isVisited && visitedCount < 60) {
-                                             visited[visitedCount++] = n;
-                                             if (stackTop < 60) stack[stackTop++] = n;
+                                             if (!isVisited && visitedCount < 60) {
+                                                 visited[visitedCount++] = n;
+                                                 if (stackTop < 60) stack[stackTop++] = n;
+                                             }
                                          }
                                      }
                                  }
-                                 if (foundLiberty) break;
-                             }
-                             
-                             if (!foundLiberty) {
-                                 fragColor = vec4(EMPTY, 0.0, 0.0, 0.0);
-                                 return;
+                                 
+                                 if (connectedToMovePos) {
+                                     // Group dies
+                                     fragColor = vec4(EMPTY, 0.0, 0.0, 0.0);
+                                     return;
+                                 }
                              }
                         }
                     }
@@ -187,12 +363,6 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
             }
             
             // Clear Last Move marker
-            // If we are here, we are NOT the new stone.
-            // But we might be the OLD last move.
-            // We should clear the marker bit (.z)
-            // But wait, if I am the *new* stone, I returned above.
-            // So here I am definitely not the new stone.
-            // So I should clear my marker.
             fragColor.z = 0.0;
         }
     }
