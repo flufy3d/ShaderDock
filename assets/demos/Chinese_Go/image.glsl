@@ -73,6 +73,8 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     // Board Area
     float boardSize = 0.9;
     float halfBoard = boardSize * 0.5;
+    float visualMargin = 0.04;
+    float halfVisual = halfBoard + visualMargin;
     
     // Board Texture (New Wood)
     vec2 boardTexUV = uv * 1.0 + 0.5;
@@ -80,45 +82,52 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     // Adjust wood color if needed
     woodCol = pow(woodCol, vec3(0.35)); 
     
-    if (abs(uv.x) < halfBoard && abs(uv.y) < halfBoard) {
+    if (abs(uv.x) < halfVisual && abs(uv.y) < halfVisual) {
         col = woodCol;
         
-        vec2 boardUV = (uv + halfBoard) / boardSize; 
-        vec2 gridUV = boardUV * (BOARD_SIZE - 1.0); 
-        
-        // Grid Lines
-        vec2 gridDist = abs(fract(gridUV + 0.5) - 0.5);
-        vec2 pixelDist = gridDist * (boardSize / (BOARD_SIZE - 1.0)) * minDim;
-        
-        float lineThickness = 1.5;
-        float lineAlpha = max(
-            smoothstep(lineThickness, lineThickness - 1.0, pixelDist.x),
-            smoothstep(lineThickness, lineThickness - 1.0, pixelDist.y)
-        );
-        
-        col = mix(col, vec3(0.05), lineAlpha * 0.8);
-        
-        // Star points
-        vec2 starPoints[3];
-        starPoints[0] = vec2(3, 3);
-        starPoints[1] = vec2(9, 9);
-        starPoints[2] = vec2(15, 15);
-        
-        float starDist = 100.0;
-        for(int i=0; i<3; i++) {
-            for(int j=0; j<3; j++) {
-                vec2 p = vec2(starPoints[i].x, starPoints[j].y);
-                float d = length(gridUV - p);
-                starDist = min(starDist, d);
+        // Only draw grid lines within the playing area
+        if (abs(uv.x) < halfBoard + 0.002 && abs(uv.y) < halfBoard + 0.002) {
+            vec2 boardUV = (uv + halfBoard) / boardSize; 
+            vec2 gridUV = boardUV * (BOARD_SIZE - 1.0); 
+            
+            // Grid Lines
+            vec2 gridDist = abs(fract(gridUV + 0.5) - 0.5);
+            vec2 pixelDist = gridDist * (boardSize / (BOARD_SIZE - 1.0)) * minDim;
+            
+            float lineThickness = 1.5;
+            float lineAlpha = max(
+                smoothstep(lineThickness, lineThickness - 1.0, pixelDist.x),
+                smoothstep(lineThickness, lineThickness - 1.0, pixelDist.y)
+            );
+            
+            // Fade out grid lines at the very edge to avoid hard cuts
+            // float edgeFade = smoothstep(halfBoard, halfBoard - 0.01, max(abs(uv.x), abs(uv.y)));
+            // lineAlpha *= edgeFade;
+            
+            col = mix(col, vec3(0.05), lineAlpha * 0.8);
+            
+            // Star points
+            vec2 starPoints[3];
+            starPoints[0] = vec2(3, 3);
+            starPoints[1] = vec2(9, 9);
+            starPoints[2] = vec2(15, 15);
+            
+            float starDist = 100.0;
+            for(int i=0; i<3; i++) {
+                for(int j=0; j<3; j++) {
+                    vec2 p = vec2(starPoints[i].x, starPoints[j].y);
+                    float d = length(gridUV - p);
+                    starDist = min(starDist, d);
+                }
             }
+            float starPixelDist = starDist * (boardSize / (BOARD_SIZE - 1.0)) * minDim;
+            float starMask = smoothstep(4.0, 3.0, starPixelDist);
+            col = mix(col, vec3(0.0), starMask);
         }
-        float starPixelDist = starDist * (boardSize / (BOARD_SIZE - 1.0)) * minDim;
-        float starMask = smoothstep(4.0, 3.0, starPixelDist);
-        col = mix(col, vec3(0.0), starMask);
     }
     
     // Shadow/Edge
-    vec2 d = abs(uv) - vec2(halfBoard);
+    vec2 d = abs(uv) - vec2(halfVisual);
     float edgeDist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
     float shadow = smoothstep(0.0, 0.05, edgeDist);
     col = mix(col, col * 0.5, 1.0 - shadow); 
