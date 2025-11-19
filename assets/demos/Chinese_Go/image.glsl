@@ -78,7 +78,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     vec2 boardTexUV = uv * 1.0 + 0.5;
     vec3 woodCol = texture(iChannel1, boardTexUV).rgb;
     // Adjust wood color if needed
-    woodCol = pow(woodCol, vec3(1.1)); 
+    woodCol = pow(woodCol, vec3(0.35)); 
     
     if (abs(uv.x) < halfBoard && abs(uv.y) < halfBoard) {
         col = woodCol;
