@@ -68,7 +68,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     vec2 screenUV = fragCoord / iResolution.xy;
     // Radial gradient from dark gray to black
     float bgDist = length(screenUV - 0.5);
-    vec3 col = mix(vec3(0.15), vec3(0.0), bgDist * 1.5);
+    vec3 col = mix(vec3(0.15), vec3(0.25), bgDist * 1.5);
     
     // Board Area
     float boardSize = 0.9;
