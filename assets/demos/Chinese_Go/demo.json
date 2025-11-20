@@ -51,6 +51,20 @@
           "published": 1
         },
         {
+          "id": "keyboard",
+          "type": "keyboard",
+          "channel": 2,
+          "filepath": null,
+          "sampler": {
+            "filter": "nearest",
+            "wrap": "clamp",
+            "vflip": "true",
+            "srgb": "false",
+            "internal": "byte"
+          },
+          "published": 1
+        },
+        {
           "id": "texFont",
           "type": "texture",
           "channel": 3,

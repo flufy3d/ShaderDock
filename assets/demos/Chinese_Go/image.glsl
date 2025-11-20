@@ -11,8 +11,15 @@
 #define BLACK_WINS 1.0
 #define WHITE_WINS 2.0
 
+const int KEY_DEBUG_B = 66;   // 'B'
+const int KEY_DEBUG_F1 = 112; // F1
+
 vec4 loadValue(vec2 uv) {
     return texelFetch(iChannel0, ivec2(uv), 0);
+}
+
+float keyDown(int code) {
+    return texelFetch(iChannel2, ivec2(code, 0), 0).x;
 }
 
 // --- Font Rendering ---
@@ -66,6 +73,15 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     
     // Background (Gradient Black)
     vec2 screenUV = fragCoord / iResolution.xy;
+
+    bool showBufferA = keyDown(KEY_DEBUG_B) > 0.5 || keyDown(KEY_DEBUG_F1) > 0.5;
+    if (showBufferA) {
+        ivec2 texel = ivec2(clamp(fragCoord, vec2(0.0), iResolution.xy - 1.0));
+        vec3 raw = texelFetch(iChannel0, texel, 0).rgb;
+        fragColor = vec4(raw, 1.0);
+        return;
+    }
+
     // Radial gradient from dark gray to black
     float bgDist = length(screenUV - 0.5);
     vec3 col = mix(vec3(0.15), vec3(0.25), bgDist * 1.5);
@@ -189,19 +205,13 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
             textPos.x *= iResolution.x / iResolution.y; 
             
             float txt = 0.0;
-            txt += drawChar(textPos - vec2(0.0, 0.0), 84).x; 
-            txt += drawChar(textPos - vec2(0.6, 0.0), 85).x; 
-            txt += drawChar(textPos - vec2(1.2, 0.0), 82).x; 
-            txt += drawChar(textPos - vec2(1.8, 0.0), 78).x; 
+            float offset = -0.95;
+            txt += drawChar(textPos - vec2(0.0 + offset, 0.0), 84).x; 
+            txt += drawChar(textPos - vec2(0.6 + offset, 0.0), 85).x; 
+            txt += drawChar(textPos - vec2(1.2 + offset, 0.0), 82).x; 
+            txt += drawChar(textPos - vec2(1.8 + offset, 0.0), 78).x; 
             
-            float txtShadow = 0.0;
-            vec2 shadowOffset = vec2(0.05, -0.05);
-            txtShadow += drawChar(textPos - vec2(0.0, 0.0) - shadowOffset, 84).x;
-            txtShadow += drawChar(textPos - vec2(0.6, 0.0) - shadowOffset, 85).x;
-            txtShadow += drawChar(textPos - vec2(1.2, 0.0) - shadowOffset, 82).x;
-            txtShadow += drawChar(textPos - vec2(1.8, 0.0) - shadowOffset, 78).x;
-            
-            col = mix(col, vec3(0.0), txtShadow * 0.5);
+
             col = mix(col, vec3(1.0), txt);
         }
     }
