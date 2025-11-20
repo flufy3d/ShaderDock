@@ -208,11 +208,11 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     
     // Resign Button
     {
-        if (screenUV.x > 0.82 && screenUV.y > 0.88) {
+        if (screenUV.x > 0.82 && screenUV.y > 0.9) {
             vec2 p = (screenUV - vec2(0.91, 0.94));
             p.x *= iResolution.x / iResolution.y;
             
-            vec2 b = vec2(0.08, 0.035);
+            vec2 b = vec2(0.07, 0.03);
             vec2 d = abs(p) - b;
             float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - 0.01;
             float btnMask = smoothstep(0.005, 0.0, dist);
@@ -233,6 +233,37 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
             txt += drawChar(textPos - vec2(1.8, 0.0), 73).x;
             txt += drawChar(textPos - vec2(2.2, 0.0), 71).x;
             txt += drawChar(textPos - vec2(2.8, 0.0), 78).x;
+            
+            col = mix(col, vec3(1.0), txt * btnMask);
+        }
+    }
+    
+    // Undo Button
+    {
+        if (screenUV.x > 0.82 && screenUV.y > 0.76 && screenUV.y < 0.9) {
+            vec2 p = (screenUV - vec2(0.91, 0.84));
+            p.x *= iResolution.x / iResolution.y;
+            
+            vec2 b = vec2(0.07, 0.03);
+            vec2 d = abs(p) - b;
+            float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - 0.01;
+            float btnMask = smoothstep(0.005, 0.0, dist);
+            
+            vec3 btnCol = mix(vec3(0.18, 0.3, 0.45), vec3(0.25, 0.45, 0.65), p.y * 10.0 + 0.5);
+            col = mix(col, btnCol, btnMask);
+            
+            float border = smoothstep(0.0, 0.005, abs(dist));
+            col = mix(col, vec3(0.5, 0.7, 0.9), btnMask * (1.0 - border));
+            
+            vec2 textPos = (screenUV - vec2(0.86, 0.825)) * 22.0;
+            textPos.x *= iResolution.x / iResolution.y; 
+            
+            float txt = 0.0;
+            float offset = 0.5;
+            txt += drawChar(textPos - vec2(0.0 + offset, 0.0), 85).x;
+            txt += drawChar(textPos - vec2(0.6 + offset, 0.0), 78).x;
+            txt += drawChar(textPos - vec2(1.2 + offset, 0.0), 68).x;
+            txt += drawChar(textPos - vec2(1.8 + offset, 0.0), 79).x;
             
             col = mix(col, vec3(1.0), txt * btnMask);
         }

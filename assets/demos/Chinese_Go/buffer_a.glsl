@@ -1,5 +1,7 @@
 #define BOARD_SIZE 19
 #define STATE_POS vec2(20.0, 0.0)
+#define HISTORY_COUNT_POS (STATE_POS + vec2(0.0, 1.0))
+#define HISTORY_STRIDE (STATE_POS.x + 2.0)
 
 // States
 #define EMPTY 0.0
@@ -14,6 +16,12 @@
 // Helper to read texture
 vec4 loadValue(vec2 uv) {
     return texelFetch(iChannel0, ivec2(uv), 0);
+}
+
+ivec2 slotOrigin(int index, int slotsPerRow, int stride) {
+    int row = index / slotsPerRow;
+    int col = index - row * slotsPerRow;
+    return ivec2(col * stride, row * stride);
 }
 
 // Get stone color at position
@@ -196,6 +204,54 @@ bool isSuicide(ivec2 movePos, float color) {
     return getCaptureCount(movePos, color) == 0 && !hasLibertiesAfterMove(movePos, color);
 }
 
+bool isValidMove(ivec2 movePos, float color, vec2 koPos, out vec2 nextKo) {
+    nextKo = vec2(-1.0);
+    if (!onBoard(movePos)) return false;
+    if (getStone(movePos) != EMPTY) return false;
+    
+    if (koPos.x >= 0.0 && float(movePos.x) == koPos.x && float(movePos.y) == koPos.y) {
+        return false;
+    }
+    
+    if (isSuicide(movePos, color)) return false;
+    
+    int capturedCount = getCaptureCount(movePos, color);
+    if (capturedCount == 1) {
+        bool hasFriendlyNeighbor = false;
+        int directLiberties = 0;
+        
+        ivec2 neighbors[4];
+        neighbors[0] = movePos + ivec2(1, 0);
+        neighbors[1] = movePos + ivec2(-1, 0);
+        neighbors[2] = movePos + ivec2(0, 1);
+        neighbors[3] = movePos + ivec2(0, -1);
+        
+        for(int i=0; i<4; i++) {
+            ivec2 n = neighbors[i];
+            if (!onBoard(n)) continue;
+            float s = getStone(n);
+            if (s == color) hasFriendlyNeighbor = true;
+            if (s == EMPTY) directLiberties++;
+        }
+        
+        if (!hasFriendlyNeighbor && directLiberties == 0) {
+            float opponent = (color == BLACK) ? WHITE : BLACK;
+            for(int i=0; i<4; i++) {
+                ivec2 n = neighbors[i];
+                if (!onBoard(n)) continue;
+                if (getStone(n) == opponent) {
+                    GroupInfo gInfo = getGroupInfo(n, opponent);
+                    if (gInfo.liberties == 1 && gInfo.stones == 1) {
+                        nextKo = vec2(n);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     ivec2 iFragCoord = ivec2(fragCoord);
@@ -206,6 +262,8 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
         if (iFragCoord == ivec2(STATE_POS)) {
             // .x = Current Player, .y = Game State, .zw = Ko Position (-1 if none)
             fragColor = vec4(BLACK, PLAYING, -1.0, -1.0); 
+        } else if (iFragCoord == ivec2(HISTORY_COUNT_POS)) {
+            fragColor = vec4(0.0);
         }
         return;
     }
@@ -219,92 +277,105 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     float gameState = globalState.y;
     vec2 koPos = globalState.zw;
     
+    int historyStride = int(HISTORY_STRIDE + 0.5);
+    int slotsPerRow = max(1, int(iResolution.x) / historyStride);
+    int slotsPerCol = max(1, int(iResolution.y) / historyStride);
+    int totalSlots = slotsPerRow * slotsPerCol;
+    int maxHistory = max(0, totalSlots - 1);
+    int historyCount = int(loadValue(HISTORY_COUNT_POS).x + 0.5);
+    historyCount = clamp(historyCount, 0, maxHistory);
+    
     if (gameState != PLAYING) {
-        return;
+        // Still allow undo to rewind a finished game
     }
     
     // Input Handling
     vec4 lastMouse = loadValue(STATE_POS + vec2(1.0, 0.0));
     bool isNewClick = (iMouse.z > 0.0) && (iMouse.zw != lastMouse.zw);
     
-    // Update Global State
-    if (iFragCoord == ivec2(STATE_POS)) {
-        if (isNewClick) {
-            float minDim = min(iResolution.x, iResolution.y);
-            vec2 uv = (iMouse.xy - 0.5 * iResolution.xy) / minDim;
-            float boardSize = 0.9;
-            vec2 boardUV = (uv + boardSize * 0.5) / boardSize;
+    float minDim = min(iResolution.x, iResolution.y);
+    vec2 screenUV = iMouse.xy / iResolution.xy;
+    vec2 uv = (iMouse.xy - 0.5 * iResolution.xy) / minDim;
+    float boardSize = 0.9;
+    vec2 boardUV = (uv + boardSize * 0.5) / boardSize;
+    vec2 boardGrid = boardUV * (float(BOARD_SIZE) - 1.0);
+    ivec2 movePos = ivec2(round(boardGrid));
+    vec2 dist = abs(boardGrid - vec2(movePos));
+    
+    // Button hit boxes (aligned with image.glsl)
+    vec2 resignCenter = vec2(0.91, 0.94);
+    vec2 resignHalf = vec2(0.07, 0.03);
+    vec2 undoCenter = vec2(0.91, 0.84);
+    vec2 undoHalf = vec2(0.07, 0.03);
+    
+    vec2 resignP = screenUV - resignCenter;
+    resignP.x *= iResolution.x / iResolution.y;
+    bool isResignClick = isNewClick && all(lessThanEqual(abs(resignP), resignHalf));
+    
+    vec2 undoP = screenUV - undoCenter;
+    undoP.x *= iResolution.x / iResolution.y;
+    bool isUndoClick = isNewClick && all(lessThanEqual(abs(undoP), undoHalf));
+    
+    bool tryMove = isNewClick && gameState == PLAYING && !isResignClick && !isUndoClick &&
+                   boardUV.x >= 0.0 && boardUV.x <= 1.0 && boardUV.y >= 0.0 && boardUV.y <= 1.0 &&
+                   length(dist) < 0.4;
+    
+    vec2 nextKo = vec2(-1.0);
+    bool validMove = false;
+    if (tryMove) {
+        validMove = isValidMove(movePos, currentPlayer, koPos, nextKo);
+    }
+    
+    bool shouldUndo = isUndoClick && historyCount > 0 && maxHistory > 0;
+    bool recordHistory = validMove && historyCount >= 0 && maxHistory > 0;
+    
+    // History slots
+    if (maxHistory > 0) {
+        int slotX = int(floor(fragCoord.x / float(historyStride)));
+        int slotY = int(floor(fragCoord.y / float(historyStride)));
+        bool insideGrid = slotX < slotsPerRow && slotY < slotsPerCol;
+        int slotIndex = slotY * slotsPerRow + slotX;
+        if (insideGrid && slotIndex > 0) {
+            ivec2 origin = ivec2(slotX * historyStride, slotY * historyStride);
+            ivec2 localCoord = iFragCoord - origin;
+            bool boardCoord = (localCoord.x >= 0 && localCoord.x < BOARD_SIZE) && (localCoord.y >= 0 && localCoord.y < BOARD_SIZE);
+            bool globalCoord = (localCoord.x == int(STATE_POS.x)) && (localCoord.y == int(STATE_POS.y));
             
-            // Resign Check
-            vec2 screenUV = iMouse.xy / iResolution.xy;
-            if (screenUV.x > 0.85 && screenUV.y > 0.9) {
-                fragColor = vec4(currentPlayer, (currentPlayer == BLACK) ? WHITE_WINS : BLACK_WINS, 0.0, 0.0);
-                return;
-            }
-            
-            // Move Check
-            if (boardUV.x >= 0.0 && boardUV.x <= 1.0 && boardUV.y >= 0.0 && boardUV.y <= 1.0) {
-                vec2 gridUV = boardUV * (float(BOARD_SIZE) - 1.0);
-                ivec2 boardPos = ivec2(round(gridUV));
-                vec2 dist = abs(gridUV - vec2(boardPos));
-                
-                if (length(dist) < 0.4 && onBoard(boardPos)) {
-                    if (getStone(boardPos) == EMPTY) {
-                        // Check Ko Rule
-                        if (koPos.x >= 0.0 && float(boardPos.x) == koPos.x && float(boardPos.y) == koPos.y) {
-                            return;
-                        }
-                        
-                        int capturedCount = getCaptureCount(boardPos, currentPlayer);
-                        
-                        // Suicide Check
-                        if (capturedCount == 0 && !hasLibertiesAfterMove(boardPos, currentPlayer)) {
-                            return;
-                        }
-                        
-                        vec2 nextKo = vec2(-1.0);
-                        
-                        if (capturedCount == 1) {
-                            // Ko condition: captured 1 stone, new stone has 1 liberty (isolated)
-                            bool hasFriendlyNeighbor = false;
-                            int directLiberties = 0;
-                            
-                            ivec2 neighbors[4];
-                            neighbors[0] = boardPos + ivec2(1, 0);
-                            neighbors[1] = boardPos + ivec2(-1, 0);
-                            neighbors[2] = boardPos + ivec2(0, 1);
-                            neighbors[3] = boardPos + ivec2(0, -1);
-                            
-                             for(int i=0; i<4; i++) {
-                                ivec2 n = neighbors[i];
-                                if (!onBoard(n)) continue;
-                                float s = getStone(n);
-                                if (s == currentPlayer) hasFriendlyNeighbor = true;
-                                if (s == EMPTY) directLiberties++;
-                            }
-                            
-                            if (!hasFriendlyNeighbor && directLiberties == 0) {
-                                // Find the captured stone position for Ko
-                                float opponent = (currentPlayer == BLACK) ? WHITE : BLACK;
-                                for(int i=0; i<4; i++) {
-                                    ivec2 n = neighbors[i];
-                                    if (!onBoard(n)) continue;
-                                    if (getStone(n) == opponent) {
-                                        GroupInfo gInfo = getGroupInfo(n, opponent);
-                                        if (gInfo.liberties == 1 && gInfo.stones == 1) {
-                                            nextKo = vec2(n);
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        
-                        fragColor = vec4((currentPlayer == BLACK) ? WHITE : BLACK, PLAYING, nextKo);
-                        return;
+            if ((boardCoord || globalCoord) && slotIndex <= maxHistory) {
+                if (recordHistory) {
+                    ivec2 sourceOrigin = slotOrigin(slotIndex - 1, slotsPerRow, historyStride);
+                    fragColor = loadValue(vec2(sourceOrigin + localCoord));
+                    return;
+                } else if (shouldUndo) {
+                    if (slotIndex < historyCount) {
+                        ivec2 sourceOrigin = slotOrigin(slotIndex + 1, slotsPerRow, historyStride);
+                        fragColor = loadValue(vec2(sourceOrigin + localCoord));
+                    } else {
+                        fragColor = vec4(0.0);
                     }
+                    return;
                 }
             }
+        }
+    }
+    
+    // Input Handling
+    // Update Global State
+    if (iFragCoord == ivec2(STATE_POS)) {
+        if (shouldUndo) {
+            ivec2 history0Origin = slotOrigin(1, slotsPerRow, historyStride);
+            fragColor = loadValue(vec2(history0Origin + iFragCoord));
+            return;
+        }
+        
+        if (isResignClick) {
+            fragColor = vec4(currentPlayer, (currentPlayer == BLACK) ? WHITE_WINS : BLACK_WINS, 0.0, 0.0);
+            return;
+        }
+        
+        if (validMove) {
+            fragColor = vec4((currentPlayer == BLACK) ? WHITE : BLACK, PLAYING, nextKo);
+            return;
         }
         return;
     }
@@ -315,106 +386,87 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
         return;
     }
     
+    // History count
+    if (iFragCoord == ivec2(HISTORY_COUNT_POS)) {
+        if (recordHistory) {
+            fragColor = vec4(float(min(historyCount + 1, maxHistory)), 0.0, 0.0, 0.0);
+        } else if (shouldUndo) {
+            fragColor = vec4(float(max(historyCount - 1, 0)), 0.0, 0.0, 0.0);
+        }
+        return;
+    }
+    
     // Board Update
     if (onBoard(iFragCoord)) {
-        if (isNewClick) {
-            float minDim = min(iResolution.x, iResolution.y);
-            vec2 uv = (iMouse.xy - 0.5 * iResolution.xy) / minDim;
-            float boardSize = 0.9;
-            vec2 boardUV = (uv + boardSize * 0.5) / boardSize;
-            
-             // Resign Check
-            vec2 screenUV = iMouse.xy / iResolution.xy;
-            if (screenUV.x > 0.85 && screenUV.y > 0.9) {
+        if (shouldUndo) {
+            ivec2 history0Origin = slotOrigin(1, slotsPerRow, historyStride);
+            fragColor = loadValue(vec2(history0Origin + iFragCoord));
+            return;
+        }
+        
+        if (validMove) {
+            if (iFragCoord == movePos) {
+                fragColor = vec4(currentPlayer, 0.0, 1.0, 0.0);
                 return;
             }
             
-            if (boardUV.x >= 0.0 && boardUV.x <= 1.0 && boardUV.y >= 0.0 && boardUV.y <= 1.0) {
-                vec2 gridUV = boardUV * (float(BOARD_SIZE) - 1.0);
-                ivec2 movePos = ivec2(round(gridUV));
-                vec2 dist = abs(gridUV - vec2(movePos));
-                
-                if (length(dist) < 0.4 && onBoard(movePos)) {
-                    if (getStone(movePos) == EMPTY) {
-                        // Check Ko
-                        if (koPos.x >= 0.0 && float(movePos.x) == koPos.x && float(movePos.y) == koPos.y) {
-                            return;
-                        }
-
-                        // Suicide Check
-                        if (isSuicide(movePos, currentPlayer)) {
-                            return;
+            if (data.x != EMPTY && data.x != currentPlayer) {
+                GroupInfo info = getGroupInfo(iFragCoord, data.x);
+                if (info.liberties == 1) {
+                    bool connectedToMovePos = false;
+                    
+                    ivec2 stack[60];
+                    int stackTop = 0;
+                    stack[stackTop++] = iFragCoord;
+                    
+                    ivec2 visited[60];
+                    int visitedCount = 0;
+                    visited[visitedCount++] = iFragCoord;
+                    
+                    int safety = 0;
+                    while(stackTop > 0 && safety < 100) {
+                        safety++;
+                        ivec2 p = stack[--stackTop];
+                        
+                        if (abs(p.x - movePos.x) + abs(p.y - movePos.y) == 1) {
+                            connectedToMovePos = true;
                         }
                         
-                        // 1. Place Stone
-                        if (iFragCoord == movePos) {
-                            fragColor = vec4(currentPlayer, 0.0, 1.0, 0.0);
-                            return;
-                        }
+                        ivec2 neighbors[4];
+                        neighbors[0] = p + ivec2(1, 0);
+                        neighbors[1] = p + ivec2(-1, 0);
+                        neighbors[2] = p + ivec2(0, 1);
+                        neighbors[3] = p + ivec2(0, -1);
                         
-                        // 2. Capture Logic
-                        if (data.x != EMPTY && data.x != currentPlayer) {
-                             // Check if stone dies (if it has 1 liberty and that liberty is the move position)
-                             GroupInfo info = getGroupInfo(iFragCoord, data.x);
-                             if (info.liberties == 1) {
-                                 // Verify if the single liberty is indeed the move position
-                                 bool connectedToMovePos = false;
-                                 
-                                 ivec2 stack[60];
-                                 int stackTop = 0;
-                                 stack[stackTop++] = iFragCoord;
-                                 
-                                 ivec2 visited[60];
-                                 int visitedCount = 0;
-                                 visited[visitedCount++] = iFragCoord;
-                                 
-                                 int safety = 0;
-                                 while(stackTop > 0 && safety < 100) {
-                                     safety++;
-                                     ivec2 p = stack[--stackTop];
-                                     
-                                     if (abs(p.x - movePos.x) + abs(p.y - movePos.y) == 1) {
-                                         connectedToMovePos = true;
-                                     }
-                                     
-                                     ivec2 neighbors[4];
-                                     neighbors[0] = p + ivec2(1, 0);
-                                     neighbors[1] = p + ivec2(-1, 0);
-                                     neighbors[2] = p + ivec2(0, 1);
-                                     neighbors[3] = p + ivec2(0, -1);
-                                     
-                                     for(int i=0; i<4; i++) {
-                                         ivec2 n = neighbors[i];
-                                         if (!onBoard(n)) continue;
-                                         if (getStone(n) == data.x) {
-                                             bool isVisited = false;
-                                             for(int j=0; j<60; j++) {
-                                                 if (j >= visitedCount) break;
-                                                 if (visited[j] == n) {
-                                                     isVisited = true;
-                                                     break;
-                                                 }
-                                             }
-                                             if (!isVisited && visitedCount < 60) {
-                                                 visited[visitedCount++] = n;
-                                                 if (stackTop < 60) stack[stackTop++] = n;
-                                             }
-                                         }
-                                     }
-                                 }
-                                 
-                                 if (connectedToMovePos) {
-                                     // Group dies
-                                     fragColor = vec4(EMPTY, 0.0, 0.0, 0.0);
-                                     return;
-                                 }
-                             }
+                        for(int i=0; i<4; i++) {
+                            ivec2 n = neighbors[i];
+                            if (!onBoard(n)) continue;
+                            if (getStone(n) == data.x) {
+                                bool isVisited = false;
+                                for(int j=0; j<60; j++) {
+                                    if (j >= visitedCount) break;
+                                    if (visited[j] == n) {
+                                        isVisited = true;
+                                        break;
+                                    }
+                                }
+                                if (!isVisited && visitedCount < 60) {
+                                    visited[visitedCount++] = n;
+                                    if (stackTop < 60) stack[stackTop++] = n;
+                                }
+                            }
                         }
+                    }
+                    
+                    if (connectedToMovePos) {
+                        fragColor = vec4(EMPTY, 0.0, 0.0, 0.0);
+                        return;
                     }
                 }
             }
-            
-            // Clear Last Move marker
+        }
+        
+        if (isNewClick && !isUndoClick && !isResignClick) {
             fragColor.z = 0.0;
         }
     }
