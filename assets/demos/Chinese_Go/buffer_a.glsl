@@ -285,6 +285,10 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     int historyCount = int(loadValue(HISTORY_COUNT_POS).x + 0.5);
     historyCount = clamp(historyCount, 0, maxHistory);
     
+    // Cooldown logic
+    float cooldown = loadValue(HISTORY_COUNT_POS).y;
+    cooldown = max(0.0, cooldown - 1.0);
+    
     if (gameState != PLAYING) {
         // Still allow undo to rewind a finished game
     }
@@ -326,7 +330,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
         validMove = isValidMove(movePos, currentPlayer, koPos, nextKo);
     }
     
-    bool shouldUndo = isUndoClick && historyCount > 0 && maxHistory > 0;
+    bool shouldUndo = isUndoClick && historyCount > 0 && maxHistory > 0 && cooldown <= 0.0;
     bool recordHistory = validMove && historyCount >= 0 && maxHistory > 0;
     
     // History slots
@@ -389,9 +393,11 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     // History count
     if (iFragCoord == ivec2(HISTORY_COUNT_POS)) {
         if (recordHistory) {
-            fragColor = vec4(float(min(historyCount + 1, maxHistory)), 0.0, 0.0, 0.0);
+            fragColor = vec4(float(min(historyCount + 1, maxHistory)), max(0.0, cooldown - 1.0), 0.0, 0.0);
         } else if (shouldUndo) {
-            fragColor = vec4(float(max(historyCount - 1, 0)), 0.0, 0.0, 0.0);
+            fragColor = vec4(float(max(historyCount - 1, 0)), 10.0, 0.0, 0.0);
+        } else {
+             fragColor = vec4(float(historyCount), max(0.0, cooldown - 1.0), 0.0, 0.0);
         }
         return;
     }
