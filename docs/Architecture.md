@@ -2,11 +2,13 @@
 
 ## 目录与模块
 
-- `src/app/`  
-  - `ShaderDockApp.cpp` 负责应用生命周期（初始化、运行、关闭）。  
-  - `ShaderDockApp_Startup.cpp` 处理配置加载、SDL 窗口/GLES 上下文、Demo manifest 解析与管线搭建。  
-  - `ShaderDockApp_Render.cpp` 管理视口与帧渲染。  
+- `src/app/`
+  - `ShaderDockApp.cpp` 负责应用生命周期（初始化、运行、关闭）。
+  - `ShaderDockApp_Startup.cpp` 处理 SDL 窗口/GLES 上下文、Demo manifest 解析与管线搭建。
+  - `ShaderDockApp_Render.cpp` 管理视口与帧渲染。
   - `ShaderDockApp_Input.cpp` 只做 SDL 输入事件与 provider 的桥接（鼠标更新 + 将键盘事件分发给 `KeyboardInputProvider`）。
+  - `AppConfig.cpp` 独立处理用户配置文件的读取与写入（平台相关的 pref 路径定位及 JSON 解析）。
+  - `main.cpp` 解析 CLI 参数（`--demo`、`--list-demos`、`--help`）并驱动 `ShaderDockApp`。
 - `src/manifest/`  
   - `ManifestTypes.*` 描述 `DemoManifest`、`RenderPass`、`PassInput` 等不可知 JSON 的领域模型。  
   - `DemoManifestLoader.*` 负责解析 `demo.json`，只返回干净的数据结构。
@@ -14,15 +16,22 @@
   - `PassInputBinding.*` 定义渲染期绑定接口。  
   - `TextureInputBinding.*`, `CubemapInputBinding.*`, `KeyboardInputBinding.*`, `BufferInputBinding.*` 将对应类型的 GL 绑定逻辑分离到独立 `.cpp`。  
   - `bindings/providers/` 下的 `TextureInputProvider`, `CubemapInputProvider`, `KeyboardInputProvider`, `BufferInputProvider` 负责资源装载/更新及绑定创建，`RenderPipeline` 只通过 provider 接口拿到 `PassInputBinding`。
-- `src/render/`  
-  - `PassGraph.*` 纯粹计算拓扑与历史依赖。  
-  - `PassInstance.*` 只关心 shader 组装与输入绑定（通过 `bindings` 模块）。  
-  - `RenderPipeline.*` 负责 Graph 构建、目标缓冲管理与执行。  
+- `src/render/`
+  - `PassGraph.*` 纯粹计算拓扑与历史依赖。
+  - `PassInstance.*` 只关心 shader 组装与输入绑定（通过 `bindings` 模块）。
+  - `RenderPipeline.*` 负责 Graph 构建、目标缓冲管理与执行。
+  - `GlLoader.*` 封装 GLAD 初始化与 OpenGL ES 函数指针加载，集中管理 GL 扩展查询与能力检测。
   - 其他文件 (`ShaderProgram`, `FullscreenTriangle`, `PipelineTypes`) 保持基础 GL 抽象。
-- `src/resources/`  
-  - `TextureLoader.*` 只保留 `TextureHandle` 与缓存逻辑。  
-  - `TextureFactory.*` 提供纹理读取/上传细节。  
+- `src/resources/`
+  - `TextureLoader.*` 只保留 `TextureHandle` 与缓存逻辑。
+  - `TextureFactory.*` 提供纹理读取/上传细节。
   - `AssetIO`, `DemoCatalog` 等维持磁盘与外部资源交互。
+  - `stb_image_impl.cpp` 作为单一编译单元实例化 STB Image，避免多重定义问题。
+- `src/third_party/`
+  - `glad/` — OpenGL ES 函数指针加载表（GLAD 生成，仅需 `GlLoader` 包含）。
+  - `stb/stb_image.h` — 单头文件图像解码库（PNG / JPG / TGA 等格式）。
+- `scripts/`
+  - `parse_shadertoy.py` — 将 ShaderToy 导出的 JSON 转换为 ShaderDock `demo.json` 格式，便于将在线 shader 迁移到本地运行。
 
 ## 设计原则
 

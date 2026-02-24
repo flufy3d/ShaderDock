@@ -1,12 +1,13 @@
 # ShaderDock 构建指南
 
 ## 1. 必备依赖
-- CMake（建议 ≥ 3.22）
+- CMake ≥ 3.16（建议 ≥ 3.22）
 - Ninja（或 GNU Make，本文以 Ninja 为例）
-- C/C++ 编译器（GCC、Clang 或 MSVC）
+- C/C++ 编译器（GCC、Clang 或 MSVC，需支持 C++20）
 - pkg-config
-- libsdl2 2.32.10
-- libjsoncpp 1.9.5
+- libsdl2 ≥ 2.0（测试于 2.32.10）
+- libjsoncpp ≥ 1.9.5
+- libGLESv2（OpenGL ES 2/3 实现；Windows 下由 ANGLE 提供，Linux 下通常随驱动或 Mesa 安装）
 
 > 如果发行版软件源/镜像中没有上述精确版本，可先尝试使用默认版本确认能否满足编译需求，再考虑自行编译或下载预编译包。
 
@@ -105,12 +106,35 @@ pkg-config --modversion jsoncpp
 ```sh
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-./build/simple-sdl2
+./build/ShaderDock
 ```
 
 ---
 
-## 4. 常见问题
+## 4. 运行与 CLI 用法
+
+构建成功后，可执行文件为 `build/ShaderDock`（Linux）或 `build/ShaderDock.exe`（Windows）。
+
+```sh
+# 列出所有可用 demo（含编号和文件夹名）
+ShaderDock --list-demos
+
+# 按文件夹名或显示名加载指定 demo
+ShaderDock --demo Chinese_Go
+ShaderDock --demo "Happy Moomin v2"
+
+# 按编号加载（编号来自 --list-demos 输出）
+ShaderDock --demo 2
+
+# 查看帮助
+ShaderDock --help
+```
+
+不带任何参数启动时，将加载 `config.json` 中记录的上次使用的 demo；若配置不存在则加载第一个可用 demo。
+
+---
+
+## 5. 常见问题
 - **SDL2/JsonCPP 版本不满足要求**：使用 `pkg-config --variable=prefix <lib>` 查看安装路径，从源码或官方发布包安装指定版本，再更新 `PKG_CONFIG_PATH` 指向新的 `.pc` 文件。
 - **链接阶段找不到库**：确认 `pkg-config` 输出包含 `-L` 与 `-l` 相关参数，可在 CMake 命令中追加 `-DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON`，或在环境里设置 `CMAKE_PREFIX_PATH`。
 - **运行缺少 SDL2.dll（Windows）**：确保 `SDL2.dll` 与 exe 放在同一目录，或将 UCRT64 的 `bin` 目录加入 `PATH`。
