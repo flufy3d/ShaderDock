@@ -494,7 +494,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     
     int total_iterations = 0;
     
-    for (int i=0; i<SURFACE_COUNT; i++) if ((surface_mask&SURF_MASK(i)) != 0) total_iterations += MESH_DIM*MESH_DIM;
+    for (int si=0; si<SURFACE_COUNT; si++) if ((surface_mask&SURF_MASK(si)) != 0) total_iterations += MESH_DIM*MESH_DIM;
     
     int current_surface_index = -1;
     surface_mask <<= 1;
