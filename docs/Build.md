@@ -138,3 +138,4 @@ ShaderDock --help
 - **SDL2/JsonCPP 版本不满足要求**：使用 `pkg-config --variable=prefix <lib>` 查看安装路径，从源码或官方发布包安装指定版本，再更新 `PKG_CONFIG_PATH` 指向新的 `.pc` 文件。
 - **链接阶段找不到库**：确认 `pkg-config` 输出包含 `-L` 与 `-l` 相关参数，可在 CMake 命令中追加 `-DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON`，或在环境里设置 `CMAKE_PREFIX_PATH`。
 - **运行缺少 SDL2.dll（Windows）**：确保 `SDL2.dll` 与 exe 放在同一目录，或将 UCRT64 的 `bin` 目录加入 `PATH`。
+- **双显卡笔记本启动闪退（Windows）**：系统会默认分配省电的核心显卡（如 Intel 核显）运行程序，但部分核显驱动对 OpenGL ES 3.2 标准支持不佳，会导致初始化失败并静默退出。请在系统设置的“显示 -> 图形”中，或在显卡控制面板里，手动将 `ShaderDock.exe` 添加并设为“高性能”模式，强制使用独立显卡加载。
